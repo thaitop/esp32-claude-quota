@@ -175,7 +175,7 @@ normal build:
 
 ```bash
 tools/mkicons_lvgl.py --preview   # navbar tiles, mascot, weather glyphs
-tools/mkfont_lvgl.py              # the Inter faces (needs npx)
+tools/mkfont_lvgl.py              # the Inter faces (needs npx and fonttools)
 ```
 
 ## Touch controls

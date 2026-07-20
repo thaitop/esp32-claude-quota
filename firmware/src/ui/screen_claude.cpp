@@ -24,18 +24,26 @@ constexpr int16_t CARD_H = 76;
 constexpr int16_t CARD_Y[2] = {36, 114};
 
 // The vertical stack inside a 76px card, with the real font metrics rather
-// than round numbers: Inter 36 sets a 44px line, Inter 14 an 18px one. The
-// first pass put the countdown at 58 and it ran two pixels past the card's
-// bottom edge, straight through the border.
-constexpr int16_t PAD = 14;
-constexpr int16_t PCT_Y = -3;   // Inter 36's line box carries more leading
-                                // above the digits than the design shows
-constexpr int16_t PILL_Y = 8;
+// than round numbers: Inter 30 Bold sets a 37px line on a 7px descent, Inter 12
+// a 15px one. The first pass put the countdown at 58 and it ran two pixels past
+// the card's bottom edge, straight through the border.
+//
+// The gaps are equal on all four sides now, which they were not: 14px of side
+// padding against a 4px bottom gap read as a card that had been pushed up. Ten
+// at the sides, nine above the digits and nine below the countdown, and the
+// figure sits in the middle of its own box.
+constexpr int16_t PAD = 10;
+constexpr int16_t PCT_Y = 1;    // Inter 30 Bold's line box carries 8px of
+                                // leading above the digits, so the ink starts
+                                // at 9 -- level with the side padding
+constexpr int16_t PILL_Y = 9;   // top of the digits, so pill and figure share
+                                // a cap line
 constexpr int16_t PILL_H = 22;
 constexpr int16_t PILL_PAD = 13;
-constexpr int16_t BAR_Y = 45;   // 45..53
+constexpr int16_t BAR_Y = 40;   // 40..48, nine clear of the baseline at 31
 constexpr int16_t BAR_H = 8;
-constexpr int16_t FOOT_Y = 57;  // 57..72 at Inter 12, four clear of the bar
+constexpr int16_t FOOT_Y = 52;  // 52..67 at Inter 12, four clear of the bar and
+                                // nine off the card's bottom edge
 constexpr int16_t CLOCK = 14;
 
 struct CardWidgets {
@@ -54,7 +62,6 @@ struct CardWidgets {
 };
 
 CardWidgets cards[2];
-lv_obj_t *statusLabel = nullptr;
 lv_obj_t *statusDot = nullptr;
 lv_obj_t *wifiGlyph = nullptr;
 int shownStatus = -1;
@@ -64,20 +71,24 @@ void buildHeader(lv_obj_t *parent) {
   lv_image_set_src(mascot, &img_mascot);
   lv_obj_set_pos(mascot, 10, 5);
 
-  lv_obj_t *title = makeLabel(parent, &font_inter_27, theme::TEXT);
+  // Smaller than the design's 27px and bold instead. At 27 Regular the word
+  // outweighed the figures it introduces; 22 Bold reads as a label rather than
+  // as the loudest thing on the screen. Sat at y=4 so its 26px line box centres
+  // on the mascot beside it.
+  lv_obj_t *title = makeLabel(parent, &font_inter_22_bold, theme::TEXT);
   lv_label_set_text(title, "Usage");
-  lv_obj_set_pos(title, 46, 1);
+  lv_obj_set_pos(title, 46, 4);
 
   wifiGlyph = lv_image_create(parent);
   lv_image_set_src(wifiGlyph, &glyph_wifi);
-  lv_obj_set_pos(wifiGlyph, 200, 9);
+  lv_obj_set_pos(wifiGlyph, 270, 9);
   lv_obj_set_style_image_recolor_opa(wifiGlyph, LV_OPA_COVER, LV_PART_MAIN);
 
-  statusLabel = makeLabel(parent, &font_inter_15, theme::GREEN);
-  lv_obj_set_pos(statusLabel, 230, 9);
-
+  // No status word. The dot already carries the state in colour and the glyph
+  // carries the radio, so spelling "Online" out beside them said the same thing
+  // a third time and cost 70px of the header to do it.
   statusDot = makePanel(parent, 8, 8, LV_RADIUS_CIRCLE, theme::GREEN);
-  lv_obj_set_pos(statusDot, 300, 13);
+  lv_obj_set_pos(statusDot, 302, 13);
 }
 
 void buildCard(CardWidgets &card, lv_obj_t *parent, int index, const char *badge,
@@ -89,7 +100,7 @@ void buildCard(CardWidgets &card, lv_obj_t *parent, int index, const char *badge
   lv_obj_set_style_border_width(card.root, 1, LV_PART_MAIN);
   lv_obj_set_style_border_opa(card.root, LV_OPA_COVER, LV_PART_MAIN);
 
-  card.utilization = makeLabel(card.root, &font_inter_36, theme::TEXT);
+  card.utilization = makeLabel(card.root, &font_inter_30_bold, theme::TEXT);
   lv_obj_set_pos(card.utilization, PAD, PCT_Y);
 
   // The design's chevron is gone: nothing here opens a detail view, and an
@@ -169,13 +180,11 @@ void updateStatus(const AppModel &model) {
   if (status == shownStatus) return;
   shownStatus = status;
 
+  // Green associated and fed, amber associated but the bridge is quiet, red off
+  // the network entirely.
   const uint32_t tint =
       online ? theme::GREEN : (model.wifiAssociated ? theme::AMBER : theme::RED);
-  const char *word =
-      online ? "Online" : (model.wifiAssociated ? "No data" : "Offline");
 
-  lv_label_set_text(statusLabel, word);
-  lv_obj_set_style_text_color(statusLabel, theme::colour(tint), LV_PART_MAIN);
   lv_obj_set_style_bg_color(statusDot, theme::colour(tint), LV_PART_MAIN);
   lv_obj_set_style_image_recolor(
       wifiGlyph, theme::colour(model.wifiAssociated ? theme::TEXT : theme::NAV_EDGE),
