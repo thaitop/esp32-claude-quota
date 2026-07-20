@@ -90,7 +90,7 @@ void setFeedRow(Row row, const FeedStatus &status, uint32_t nowMs) {
 }  // namespace
 
 void buildSettingScreen(lv_obj_t *parent) {
-  makeTitle(parent, "Setting", &icon_setting);
+  makeTitle(parent, "Setting", &icon_setting_hdr);
 
   for (uint8_t i = 0; i < RowCount; i++) {
     lv_obj_t *label = makeLabel(parent, &font_inter_12, theme::MUTED);

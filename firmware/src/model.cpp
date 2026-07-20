@@ -1,6 +1,37 @@
 #include "model.h"
 
+#include "config.h"
+
 // Host-compilable alongside model.h -- no Arduino headers here either.
+
+// The ids come from config.h, which is also where the request path is built
+// from them, so the URL asks for exactly the coins this table names.
+const char *coinId(Coin coin) {
+  switch (coin) {
+    case Coin::BTC: return CRYPTO_ID_BTC;
+    case Coin::ETH: return CRYPTO_ID_ETH;
+    case Coin::BNB: return CRYPTO_ID_BNB;
+    default:        return "";
+  }
+}
+
+const char *coinTicker(Coin coin) {
+  switch (coin) {
+    case Coin::BTC: return "BTC";
+    case Coin::ETH: return "ETH";
+    case Coin::BNB: return "BNB";
+    default:        return "--";
+  }
+}
+
+const char *coinName(Coin coin) {
+  switch (coin) {
+    case Coin::BTC: return "Bitcoin";
+    case Coin::ETH: return "Ethereum";
+    case Coin::BNB: return "BNB";
+    default:        return "--";
+  }
+}
 
 // WMO 4677, as Open-Meteo reports it. The ranges rather than the individual
 // codes: 61, 63 and 65 are light, moderate and heavy rain, and the screen has

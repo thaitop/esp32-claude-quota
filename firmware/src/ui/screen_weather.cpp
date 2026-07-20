@@ -145,7 +145,7 @@ void clearTiles() {
 }  // namespace
 
 void buildWeatherScreen(lv_obj_t *parent) {
-  makeTitle(parent, "Weather", &icon_weather);
+  makeTitle(parent, "Weather", &icon_weather_hdr);
 
   hero = makeCard(parent, PAD, HERO_Y, HERO_W, HERO_H);
 

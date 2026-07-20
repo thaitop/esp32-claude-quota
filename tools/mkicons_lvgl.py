@@ -43,7 +43,20 @@ GLYPH_SPACE = 28
 # between them, wider than the tiles themselves, and the row read as sparse.
 TILE = 34
 TILE_R = 8  # ~22% of the side, which is a squircle rather than a circle
-UNIT = SS * TILE / GLYPH_SPACE
+
+# The header wears the same artwork smaller. Drawn at its own size rather than
+# scaled down by LVGL at draw time: lv_image_set_scale() transforms about a
+# pivot inside the source and clips to the object's box, which sliced the top
+# off every header icon on the device while looking correct in the source. It
+# is also cheaper -- a scaled image is redrawn through the transform path on
+# every refresh, and these never change size.
+HEADER = 26
+
+# Rescales the 28-unit space the artwork was laid out in to whatever size the
+# icon is being drawn at, so growing or shrinking a tile does not mean
+# re-deriving every coordinate below.
+def unit(size: int) -> float:
+    return SS * size / GLYPH_SPACE
 
 # Mirrors the palette in theme.h. Kept as RGB888 here because PIL works in
 # 8/8/8; the pack to RGB565 happens at the end, once, in one place.
@@ -84,10 +97,14 @@ def finish(img: Image.Image, w: int, h: int) -> Image.Image:
     return img.resize((w, h), Image.LANCZOS)
 
 
-def tile_base(colour: str) -> tuple[Image.Image, ImageDraw.ImageDraw]:
-    img, draw = canvas(TILE, TILE)
+def tile_base(colour: str, size: int = TILE) -> tuple[Image.Image, ImageDraw.ImageDraw]:
+    img, draw = canvas(size, size)
+    # The corner radius scales with the tile, so a smaller copy is the same
+    # squircle rather than a rounder or squarer one.
     draw.rounded_rectangle(
-        [0, 0, TILE * SS - 1, TILE * SS - 1], radius=TILE_R * SS, fill=colour
+        [0, 0, size * SS - 1, size * SS - 1],
+        radius=TILE_R * SS * size / TILE,
+        fill=colour,
     )
     return img, draw
 
@@ -103,27 +120,27 @@ def sparkle(draw: ImageDraw.ImageDraw, cx: float, cy: float, r: float, colour: s
     )
 
 
-def icon_claude() -> Image.Image:
-    img, draw = tile_base(C_CLAUDE_BG)
-    s = UNIT
+def icon_claude(size: int = TILE) -> Image.Image:
+    img, draw = tile_base(C_CLAUDE_BG, size)
+    s = unit(size)
     sparkle(draw, 16 * s, 16 * s, 9 * s, C_CLAUDE_FG)
     sparkle(draw, 8.5 * s, 8.5 * s, 4.5 * s, C_CLAUDE_FG2)
-    return finish(img, TILE, TILE)
+    return finish(img, size, size)
 
 
-def icon_weekly() -> Image.Image:
-    img, draw = tile_base(C_WEEK_BG)
-    s = UNIT
+def icon_weekly(size: int = TILE) -> Image.Image:
+    img, draw = tile_base(C_WEEK_BG, size)
+    s = unit(size)
     for x, top in ((7, 16), (12.5, 8), (18, 12)):
         draw.rounded_rectangle(
             [x * s, top * s, (x + 3.5) * s, 21 * s], radius=1.5 * s, fill=C_WEEK_FG
         )
-    return finish(img, TILE, TILE)
+    return finish(img, size, size)
 
 
-def icon_weather() -> Image.Image:
-    img, draw = tile_base(C_WEATHER_BG)
-    s = UNIT
+def icon_weather(size: int = TILE) -> Image.Image:
+    img, draw = tile_base(C_WEATHER_BG, size)
+    s = unit(size)
     draw.ellipse([15 * s, 5 * s, 24 * s, 14 * s], fill=C_WEATHER_SUN)
     # Cloud: three overlapping discs with a slab across their base.
     draw.ellipse([5 * s, 12 * s, 15 * s, 22 * s], fill=C_WEATHER_FG)
@@ -131,12 +148,12 @@ def icon_weather() -> Image.Image:
     draw.rounded_rectangle(
         [6 * s, 17 * s, 21 * s, 22 * s], radius=2.5 * s, fill=C_WEATHER_FG
     )
-    return finish(img, TILE, TILE)
+    return finish(img, size, size)
 
 
-def icon_crypto() -> Image.Image:
-    img, draw = tile_base(C_CRYPTO_BG)
-    s = UNIT
+def icon_crypto(size: int = TILE) -> Image.Image:
+    img, draw = tile_base(C_CRYPTO_BG, size)
+    s = unit(size)
     # Inter has no Bitcoin sign, so the mark is a capital B from the same face
     # with the two vertical strokes added -- which is how the glyph is built
     # anyway, and keeps it visually related to the rest of the type.
@@ -148,12 +165,12 @@ def icon_crypto() -> Image.Image:
     for x in (10.6, 14.6):
         draw.rectangle([x * s, 3.6 * s, (x + 1.8) * s, 7.5 * s], fill=C_CRYPTO_FG)
         draw.rectangle([x * s, 20.5 * s, (x + 1.8) * s, 24.4 * s], fill=C_CRYPTO_FG)
-    return finish(img, TILE, TILE)
+    return finish(img, size, size)
 
 
-def icon_setting() -> Image.Image:
-    img, draw = tile_base(C_SETTING_BG)
-    s = UNIT
+def icon_setting(size: int = TILE) -> Image.Image:
+    img, draw = tile_base(C_SETTING_BG, size)
+    s = unit(size)
     cx = cy = 14 * s
     # Eight teeth as rotated squares around the hub reads as a gear at 28px;
     # a true involute profile disappears at this size.
@@ -171,7 +188,7 @@ def icon_setting() -> Image.Image:
     draw.ellipse(
         [cx - 3 * s, cy - 3 * s, cx + 3 * s, cy + 3 * s], fill=C_SETTING_BG
     )
-    return finish(img, TILE, TILE)
+    return finish(img, size, size)
 
 
 # The header mascot, unchanged from theme.h: a blocky robot with two eye slots,
@@ -419,6 +436,84 @@ def wx_storm() -> Image.Image:
     return finish(img, WX, WX)
 
 
+# --- coin badges -----------------------------------------------------------
+#
+# One badge per tracked coin, drawn at the size the Crypto screen's hero shows
+# them. The screen's title scales the same asset down to 26 rather than taking
+# a second, smaller copy: the marks are discs with a centred glyph, which is the
+# one shape that survives being resampled by an arbitrary factor.
+#
+# Brand colours, not the palette. A reader recognises Bitcoin's orange and
+# Ethereum's blue-violet before they read the letters, and recolouring them to
+# fit the product would throw that recognition away for consistency nobody
+# asked for.
+COIN = 48
+C_BTC = "#F7931A"
+C_ETH = "#627EEA"
+C_BNB = "#F3BA2F"
+COIN_FG = "#FFFFFF"
+
+
+def _disc(draw: ImageDraw.ImageDraw, colour: str, size: int):
+    draw.ellipse([0, 0, size * SS - 1, size * SS - 1], fill=colour)
+
+
+def _diamond(draw: ImageDraw.ImageDraw, cx: float, cy: float, r: float, colour: str):
+    draw.polygon(
+        [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)], fill=colour
+    )
+
+
+def coin_btc(size: int = COIN) -> Image.Image:
+    img, draw = canvas(size, size)
+    s = SS * size / COIN
+    _disc(draw, C_BTC, size)
+    # Same construction as the navbar tile: Inter carries no Bitcoin sign, so
+    # the mark is a capital B with the two stems extended past cap height and
+    # baseline -- which is how the real glyph is drawn, and keeps it in the
+    # same family as the type beside it.
+    font = ImageFont.truetype(str(INTER), max(1, int(30 * s)))
+    draw.text((25 * s, 24 * s), "B", font=font, fill=COIN_FG, anchor="mm")
+    for x in (19.5, 25.2):
+        draw.rectangle([x * s, 9.5 * s, (x + 2.4) * s, 15 * s], fill=COIN_FG)
+        draw.rectangle([x * s, 33 * s, (x + 2.4) * s, 38.5 * s], fill=COIN_FG)
+    return finish(img, size, size)
+
+
+def coin_eth(size: int = COIN) -> Image.Image:
+    img, draw = canvas(size, size)
+    s = SS * size / COIN
+    _disc(draw, C_ETH, size)
+    # The octahedron seen edge-on: an upper kite and a lower one, with the
+    # upper half's lower wedge dimmed. Two solid halves with a gap between them
+    # is what the mark reduces to once it is 48px across.
+    cx = 24 * s
+    draw.polygon([(cx, 9 * s), (34 * s, 24.5 * s), (cx, 30 * s), (14 * s, 24.5 * s)],
+                 fill=COIN_FG)
+    draw.polygon([(cx, 32 * s), (34 * s, 26.5 * s), (cx, 39 * s), (14 * s, 26.5 * s)],
+                 fill=COIN_FG)
+    # The crease that separates the two faces of the upper kite. Drawn as a
+    # wedge in the disc's own colour rather than as a line, so it stays crisp
+    # after the resample.
+    draw.polygon([(cx, 9 * s), (34 * s, 24.5 * s), (cx, 24.5 * s)], fill=C_ETH)
+    draw.polygon([(cx, 32 * s), (34 * s, 26.5 * s), (cx, 34.5 * s)], fill=C_ETH)
+    return finish(img, size, size)
+
+
+def coin_bnb(size: int = COIN) -> Image.Image:
+    img, draw = canvas(size, size)
+    s = SS * size / COIN
+    _disc(draw, C_BNB, size)
+    cx = cy = 24 * s
+    # Four satellites around a hub, all squares on their corner. The short bars
+    # flanking the hub in the real mark disappear at this size, so they are
+    # folded into the satellites' spacing instead.
+    for dx, dy in ((0, -11), (11, 0), (0, 11), (-11, 0)):
+        _diamond(draw, cx + dx * s, cy + dy * s, 5.4 * s, COIN_FG)
+    _diamond(draw, cx, cy, 5.4 * s, COIN_FG)
+    return finish(img, size, size)
+
+
 def pack_rgb565a8(img: Image.Image) -> bytes:
     """RGB565 little-endian plane, then the alpha plane."""
     rgb = bytearray()
@@ -476,6 +571,20 @@ IMAGES = [
     ("wx_rain", wx_rain),
     ("wx_snow", wx_snow),
     ("wx_storm", wx_storm),
+    ("coin_btc", coin_btc),
+    ("coin_eth", coin_eth),
+    ("coin_bnb", coin_bnb),
+    # The header copies. Same artwork, drawn at the size it is shown rather
+    # than scaled there by LVGL -- see HEADER above for what that cost.
+    # Claude's header carries the mascot instead, so there is no small tile
+    # for it.
+    ("icon_weekly_hdr", lambda: icon_weekly(HEADER)),
+    ("icon_weather_hdr", lambda: icon_weather(HEADER)),
+    ("icon_crypto_hdr", lambda: icon_crypto(HEADER)),
+    ("icon_setting_hdr", lambda: icon_setting(HEADER)),
+    ("coin_btc_hdr", lambda: coin_btc(HEADER)),
+    ("coin_eth_hdr", lambda: coin_eth(HEADER)),
+    ("coin_bnb_hdr", lambda: coin_bnb(HEADER)),
 ]
 
 BANNER = """// Generated by tools/mkicons_lvgl.py -- do not hand-edit.

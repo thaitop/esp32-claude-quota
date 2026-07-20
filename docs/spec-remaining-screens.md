@@ -63,6 +63,14 @@ by attaching a cable.
 12. As someone holding crypto, I want the 24-hour change shown as a signed
     percentage in a colour matching its direction, so that the direction is
     readable before the digits are.
+12a. As someone holding crypto, I want the 24-hour move in dollars beside the
+    percentage, so that I know what the move was worth and not only how far it
+    went.
+12b. As someone holding crypto, I want the 24-hour trading volume, so that I
+    know how much conviction was behind the move.
+12c. As someone holding more than one coin, I want to step between BTC, ETH and
+    BNB from the screen itself, so that I do not have to reflash the device to
+    look at a different one.
 13. As someone whose display sits on a desk all day, I want each feed polled no
     more often than its provider allows, so that the device is never rate
     limited or blocked.

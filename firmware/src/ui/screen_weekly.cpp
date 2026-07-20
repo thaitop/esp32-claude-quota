@@ -210,7 +210,7 @@ void setTile(Tile &tile, bool known, int16_t value, uint32_t colour) {
 }  // namespace
 
 void buildWeeklyScreen(lv_obj_t *parent) {
-  makeTitle(parent, "Weekly", &icon_weekly);
+  makeTitle(parent, "Weekly", &icon_weekly_hdr);
 
   hero = makeCard(parent, PAD, HERO_Y, HERO_W, HERO_H);
 

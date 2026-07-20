@@ -11,7 +11,7 @@ Five Screens, one per navbar Slot:
 | **Claude** | Session and Weekly utilization, with live reset countdowns | Bridge |
 | **Weekly Usage** | The last seven days of weekly utilization, plotted | Bridge |
 | **Weather** | Temperature, apparent temperature, conditions, humidity | Weather |
-| **Crypto** | One coin's price and its 24-hour change | Crypto |
+| **Crypto** | One coin's price, 24-hour change, dollar move and volume; BTC/ETH/BNB via a toggle | Crypto |
 | **Setting** | Link, per-feed health, quota staleness, heap, uptime | — |
 
 [CONTEXT.md](CONTEXT.md) defines the vocabulary both halves of the system use.

@@ -112,6 +112,85 @@ inline void signedPercent(float pct, bool trusted, char *out, size_t len) {
   snprintf(out, len, "%+.2f%%", (double)pct);
 }
 
+// What the last 24 hours moved the price by, in dollars.
+//
+// Derived rather than fetched, because CoinGecko's simple/price reports the
+// move only as a percentage. This is exact algebra over the two figures the
+// server did send -- if p is the price now and c the percent change, the price
+// a day ago was p / (1 + c/100) -- and not an estimate standing in for a
+// missing field, which is the distinction ADR-0001 draws.
+//
+// A coin that has lost its entire value in a day would divide by zero. It has
+// not happened to a top-three coin and it would not be the interesting fact if
+// it had, but the guard costs a line and the alternative is an infinity drawn
+// on the panel.
+inline float change24hUsd(float priceUsd, float change24hPct) {
+  const float factor = 1.0f + change24hPct / 100.0f;
+  if (factor <= 0.0001f) return 0.0f;
+  return priceUsd - priceUsd / factor;
+}
+
+// "+$1,204", "-$0.0231". The sign is carried in front of the currency mark
+// rather than in front of the digits -- "$-12.40" reads as a strange price,
+// "-$12.40" as a fall.
+//
+// The decimals follow the price the move belongs to, not the move itself.
+// price()'s own rule reads the magnitude it is given, and a $4.51 move on a
+// $572 coin would come out as "+$4.5083" -- four decimals of precision on a
+// figure whose own price is printed to two, which reads as a different kind of
+// number rather than as the same one, smaller.
+inline void signedPrice(float usd, float referencePrice, bool trusted, char *out,
+                        size_t len) {
+  if (!trusted) {
+    snprintf(out, len, "%s", UNKNOWN);
+    return;
+  }
+  const float bare = usd < 0.0f ? -usd : usd;
+  const char sign = usd < 0.0f ? '-' : '+';
+
+  // Whole dollars above a thousand-dollar price, which is also where the
+  // thousands separators start mattering -- so that band goes through price()
+  // and the others do not.
+  if (referencePrice >= 1000.0f) {
+    char magnitude[24];
+    price(bare, true, magnitude, sizeof(magnitude));
+    snprintf(out, len, "%c%s", sign, magnitude);
+    return;
+  }
+  snprintf(out, len, "%c$%.*f", sign, referencePrice < 10.0f ? 4 : 2,
+           (double)bare);
+}
+
+// "$41.2B", "$1.24T", "$980M". A day's trading volume is eleven digits, and
+// eleven digits in a 90px tile is a number nobody reads and nobody could
+// compare against the next coin's.
+//
+// Three significant figures throughout, so the tile's width barely moves as the
+// figure does -- a value that jumps between "$9.8B" and "$41.24B" as it crosses
+// ten billion reads as a layout twitching rather than as a market moving.
+inline void compactUsd(float usd, bool trusted, char *out, size_t len) {
+  if (!trusted) {
+    snprintf(out, len, "%s", UNKNOWN);
+    return;
+  }
+
+  const double value = (double)usd;
+  const struct {
+    double threshold;
+    char suffix;
+  } scales[] = {{1e12, 'T'}, {1e9, 'B'}, {1e6, 'M'}, {1e3, 'K'}};
+
+  for (const auto &scale : scales) {
+    if (value < scale.threshold) continue;
+    const double scaled = value / scale.threshold;
+    const int decimals = scaled >= 100.0 ? 0 : scaled >= 10.0 ? 1 : 2;
+    snprintf(out, len, "$%.*f%c", decimals, scaled, scale.suffix);
+    return;
+  }
+
+  snprintf(out, len, "$%.0f", value);
+}
+
 // How long ago a millis() stamp was, for the Setting screen. Zero means the
 // thing never happened, which is a different fact from "happened a long time
 // ago" and is spelled differently -- see the Setting screen's feed rows.

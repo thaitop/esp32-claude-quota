@@ -58,21 +58,21 @@ inline lv_obj_t *makeCard(lv_obj_t *parent, int16_t x, int16_t y, int16_t w,
 // The icon rides at the same size and the same baseline as Claude's mascot:
 // the navbar tiles are drawn at 34 for a row read from a distance, and at full
 // size in a header they crowd the title and reach within a pixel of the first
-// card. Scaled to 26 they sit level with the cap height beside them.
+// card. At 26 they sit level with the cap height beside them.
+//
+// Pass the `_hdr` copy of the artwork, not the navbar tile. The header used to
+// take the 34px tile and shrink it with lv_image_set_scale(), which transforms
+// about a pivot inside the source and clips to the object's box -- on the
+// device that sliced the top off the icon on every screen but Claude, whose
+// mascot is the one header image that was never scaled. The generator now emits
+// a 26px copy of each tile; the sizes are in tools/mkicons_lvgl.py.
 constexpr int16_t TITLE_ICON = 26;
-constexpr int16_t TITLE_ICON_SRC = 34;
 
 inline lv_obj_t *makeTitle(lv_obj_t *parent, const char *text,
                            const lv_image_dsc_t *icon) {
   if (icon != nullptr) {
     lv_obj_t *tile = lv_image_create(parent);
     lv_image_set_src(tile, icon);
-    // Inner alignment first: the scale is applied about the image's own centre,
-    // and without it the shrunk artwork sits in the top-left corner of a box
-    // still 34px wide, which reads as a misaligned icon rather than a small one.
-    lv_image_set_inner_align(tile, LV_IMAGE_ALIGN_CENTER);
-    lv_obj_set_size(tile, TITLE_ICON, TITLE_ICON);
-    lv_image_set_scale(tile, 256 * TITLE_ICON / TITLE_ICON_SRC);
     lv_obj_set_pos(tile, 10, 3);
   }
 

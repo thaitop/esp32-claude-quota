@@ -25,6 +25,16 @@ extern const lv_image_dsc_t wx_fog;
 extern const lv_image_dsc_t wx_rain;
 extern const lv_image_dsc_t wx_snow;
 extern const lv_image_dsc_t wx_storm;
+extern const lv_image_dsc_t coin_btc;
+extern const lv_image_dsc_t coin_eth;
+extern const lv_image_dsc_t coin_bnb;
+extern const lv_image_dsc_t icon_weekly_hdr;
+extern const lv_image_dsc_t icon_weather_hdr;
+extern const lv_image_dsc_t icon_crypto_hdr;
+extern const lv_image_dsc_t icon_setting_hdr;
+extern const lv_image_dsc_t coin_btc_hdr;
+extern const lv_image_dsc_t coin_eth_hdr;
+extern const lv_image_dsc_t coin_bnb_hdr;
 
 #ifdef __cplusplus
 }

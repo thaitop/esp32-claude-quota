@@ -23,10 +23,30 @@
 #define LV_COLOR_DEPTH 16
 
 // LVGL's own heap, used for objects and styles rather than for pixels -- the
-// draw buffers are allocated separately in display.cpp. 40KB holds the five
-// screens with room to spare; see ADR-0003 for why this cannot simply grow.
+// draw buffers are allocated separately in display.cpp. See ADR-0003 for why
+// this cannot simply grow: it comes out of the same heap a TLS handshake peaks
+// 45KB into.
+//
+// It is not only objects and styles. LVGL allocates a *layer* out of this pool
+// whenever something cannot be drawn straight into the frame -- and the Claude
+// screen's progress bar, a rounded rectangle under a horizontal gradient, is
+// exactly that. Its layer is one slice of the bar at ARGB8888: 284 x 8 x 4, so
+// 9088 bytes, transient but needed on every repaint of that screen.
+//
+// At 40KB the five screens left 10044 bytes free with the largest contiguous
+// block at 9780, which is the wrong side of 9088 once the allocation's own
+// header and alignment are counted. The failure is silent and total: LVGL logs
+// "Allocating layer buffer failed. Try later" and retries on the next refresh
+// forever, which starves the main loop -- feeds stop being serviced and the
+// display freezes on whatever it last drew. Nothing crashes, so a boot looks
+// healthy right up until it does not.
+//
+// 56KB leaves roughly 26KB free against a 9KB transient, which is headroom for
+// another screen rather than for another widget. The figures come from
+// lv_mem_monitor() at boot -- main.cpp prints them, and anything that grows a
+// screen should read that line rather than assume.
 #define LV_USE_STDLIB_MALLOC LV_STDLIB_BUILTIN
-#define LV_MEM_SIZE (40 * 1024U)
+#define LV_MEM_SIZE (56 * 1024U)
 
 // 32-bit alignment keeps the SPI DMA path happy.
 #define LV_DRAW_BUF_ALIGN 4

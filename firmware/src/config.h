@@ -32,14 +32,23 @@
 
 // CoinGecko simple/price. Free tier, no API key.
 #define CRYPTO_HOST "api.coingecko.com"
-// The id CoinGecko knows the coin by, and the name the screen puts at the top.
-// Next to each other so changing the tracked coin cannot leave the title
-// naming the old one.
-#define CRYPTO_COIN_ID "bitcoin"
-#define CRYPTO_COIN_NAME "Bitcoin"
-#define CRYPTO_PATH                                            \
-  "/api/v3/simple/price?ids=" CRYPTO_COIN_ID                   \
-  "&vs_currencies=usd&include_24hr_change=true"
+
+// The ids CoinGecko knows the tracked coins by. The tickers and the display
+// names that go with them live in model.cpp's table, which reads these back --
+// so a request and a title can never disagree about which coin is on screen.
+#define CRYPTO_ID_BTC "bitcoin"
+#define CRYPTO_ID_ETH "ethereum"
+#define CRYPTO_ID_BNB "binancecoin"
+
+// All three coins in one request. Three separate ones would be three round
+// trips against a free tier that rate-limits by the minute, and only one feed
+// is ever in flight at a time (ADR-0003) -- so they would also arrive up to two
+// poll intervals apart and the screen would compare coins read at different
+// moments.
+#define CRYPTO_PATH                                                      \
+  "/api/v3/simple/price?ids=" CRYPTO_ID_BTC "," CRYPTO_ID_ETH ","        \
+  CRYPTO_ID_BNB "&vs_currencies=usd&include_24hr_change=true"            \
+  "&include_24hr_vol=true"
 
 // ---------------------------------------------------------------------------
 // Polling

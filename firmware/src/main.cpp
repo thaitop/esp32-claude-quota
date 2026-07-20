@@ -167,6 +167,20 @@ void setup() {
   net::registerFeed(Feed::Weather, net::fetchWeather, POLL_WEATHER_MS);
   net::registerFeed(Feed::Crypto, net::fetchCrypto, POLL_CRYPTO_MS);
 
+  // What the five screens cost LVGL's own pool, once they are all built.
+  //
+  // The figure that matters is the largest contiguous block rather than the
+  // total free: layers are allocated whole, and the Claude screen's gradient
+  // bar wants 9088 bytes of them on every repaint. When that block drops below
+  // what a layer needs, LVGL retries forever instead of failing, and the main
+  // loop starves -- see the note over LV_MEM_SIZE in lv_conf.h. Anything that
+  // grows a screen should read this line off the device afterwards.
+  lv_mem_monitor_t mem;
+  lv_mem_monitor(&mem);
+  Serial.printf("lv pool: used=%u free=%u frag=%u%% biggest=%u\n",
+                (unsigned)(mem.total_size - mem.free_size), (unsigned)mem.free_size,
+                (unsigned)mem.frag_pct, (unsigned)mem.free_biggest_size);
+
   Serial.printf("ready, heap=%u\n", (unsigned)display::freeHeap());
 }
 
@@ -200,13 +214,14 @@ void loop() {
   if (net::service(model, now)) {
     Serial.printf(
         "feeds: bridge=%s weather=%s crypto=%s | session=%d%% weekly=%d%% "
-        "stale=%us | history=%u | %.1fC | $%.2f | heap=%u\n",
+        "stale=%us | history=%u | %.1fC | BTC $%.2f | heap=%u\n",
         describe(model.status(Feed::Bridge).outcome),
         describe(model.status(Feed::Weather).outcome),
         describe(model.status(Feed::Crypto).outcome),
         (int)model.quota.session.utilization, (int)model.quota.weekly.utilization,
         (unsigned)model.quota.stalenessSeconds, (unsigned)model.history.count,
-        (double)model.weather.temperatureC, (double)model.crypto.priceUsd,
+        (double)model.weather.temperatureC,
+        (double)model.crypto.coin(Coin::BTC).priceUsd,
         (unsigned)display::freeHeap());
     refreshActiveScreen(now);
   }

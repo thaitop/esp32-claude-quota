@@ -121,10 +121,45 @@ struct WeatherSnapshot {
   WeatherCondition condition() const { return conditionFor(code); }
 };
 
-struct CryptoSnapshot {
+// The coins the Crypto screen tracks, in the order its toggle presents them.
+// An enum rather than three named fields: the screen shows one at a time and
+// steps through them, and stepping through named fields means a switch on every
+// read that a new coin can be left out of silently.
+enum class Coin : uint8_t {
+  BTC = 0,
+  ETH,
+  BNB,
+  Count,
+};
+
+// What CoinGecko reports for one coin, and nothing more. The 24-hour price move
+// in dollars is *not* here even though the screen shows it: it is exact algebra
+// over the two fields below -- see format::change24hUsd -- and a derived figure
+// sitting in a snapshot beside fetched ones is the sort of thing that later
+// gets treated as though the server said it.
+struct CoinQuote {
   bool trusted = false;
   float priceUsd = 0.0f;
   float change24hPct = 0.0f;
+  float volume24hUsd = 0.0f;
+};
+
+// The id CoinGecko knows a coin by, the ticker the toggle prints, and the name
+// the title carries. One table, so adding a coin cannot leave the request
+// asking for one set and the screen labelling another.
+const char *coinId(Coin coin);
+const char *coinTicker(Coin coin);
+const char *coinName(Coin coin);
+
+struct CryptoSnapshot {
+  // Per-coin, because the response can carry a price for one and nothing for
+  // another -- a coin id that CoinGecko has retired comes back as a 200 with
+  // that key simply absent. One screen-wide trusted flag would either condemn
+  // the coins that did arrive or vouch for the one that did not.
+  CoinQuote coins[(size_t)Coin::Count];
+
+  const CoinQuote &coin(Coin which) const { return coins[(size_t)which]; }
+  CoinQuote &coin(Coin which) { return coins[(size_t)which]; }
 };
 
 // ---------------------------------------------------------------------------
