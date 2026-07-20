@@ -1,0 +1,5 @@
+firmware/.pio/
+firmware/src/secrets.h
+tools/.venv/
+sim/build/
+.DS_Store
