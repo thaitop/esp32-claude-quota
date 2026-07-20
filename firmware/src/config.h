@@ -61,6 +61,19 @@ constexpr uint32_t QUOTA_STALENESS_LIMIT_S = 30 * 60;
 
 constexpr uint32_t LONG_PRESS_MS = 1000;
 
+// Raw XPT2046 extents at the edges of the visible area, in the panel's own
+// landscape orientation. Resistive panels vary unit to unit; if touches land
+// consistently off-centre, run the calibration sketch and replace these.
+// Signed, because extrapolating the fit out to the panel edge can land just
+// past zero on a panel whose active area starts inside the raw range.
+// Measured on this unit with the four-crosshair pass in the bring-up sketch,
+// not estimated from how far off a touch looked -- the error turned out to be
+// mostly scale rather than offset, which eyeballing would have got wrong.
+constexpr int32_t TOUCH_RAW_MIN_X = 168;
+constexpr int32_t TOUCH_RAW_MAX_X = 3570;
+constexpr int32_t TOUCH_RAW_MIN_Y = 239;
+constexpr int32_t TOUCH_RAW_MAX_Y = 3690;
+
 // The navbar draws 40px tall but accepts touches over a taller strip: resistive
 // panels and a stylus tip do not agree about where the edge is.
 constexpr int16_t NAV_VISUAL_H = 40;
