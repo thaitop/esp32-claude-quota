@@ -20,6 +20,8 @@
 #include "config.h"
 #include "display.h"
 #include "model.h"
+#include "ui/fonts/ui_fonts.h"
+#include "ui/ui_icons.h"
 
 namespace {
 
@@ -124,13 +126,37 @@ void enterRunningPhase() {
 
   int16_t x = 24;
   for (const Swatch &s : swatches) {
-    lv_obj_t *box = makeBox(screen, 52, 34, s.colour);
-    lv_obj_set_pos(box, x, 104);
+    lv_obj_t *box = makeBox(screen, 52, 22, s.colour);
+    lv_obj_set_pos(box, x, 64);
     lv_obj_t *caption = lv_label_create(screen);
     lv_label_set_text(caption, s.name);
     lv_obj_set_style_text_color(caption, lv_color_hex(0x9A9AA0), LV_PART_MAIN);
-    lv_obj_set_pos(caption, x, 142);
+    lv_obj_set_style_text_font(caption, &font_inter_14, LV_PART_MAIN);
+    lv_obj_set_pos(caption, x, 88);
     x += 72;
+  }
+
+  // The generated artwork and type, referenced so the linker keeps it: an
+  // unused const in a .c file is stripped by -fdata-sections, so "it built"
+  // proves nothing about whether these actually work.
+  lv_obj_t *mascot = lv_image_create(screen);
+  lv_image_set_src(mascot, &img_mascot);
+  lv_obj_set_pos(mascot, 12, 108);
+
+  lv_obj_t *sample = lv_label_create(screen);
+  lv_label_set_text(sample, "Usage 50%");
+  lv_obj_set_style_text_color(sample, lv_color_white(), LV_PART_MAIN);
+  lv_obj_set_style_text_font(sample, &font_inter_27, LV_PART_MAIN);
+  lv_obj_set_pos(sample, 48, 106);
+
+  static const lv_image_dsc_t *icons[] = {&icon_claude, &icon_weekly, &icon_weather,
+                                          &icon_crypto, &icon_setting};
+  int16_t ix = 24;
+  for (const lv_image_dsc_t *src : icons) {
+    lv_obj_t *tile = lv_image_create(screen);
+    lv_image_set_src(tile, src);
+    lv_obj_set_pos(tile, ix, 152);
+    ix += 56;
   }
 }
 
