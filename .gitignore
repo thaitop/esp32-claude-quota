@@ -1,6 +1,8 @@
 firmware/.pio/
 firmware/src/secrets.h
 bridge/history.log
+bridge/usage-cache
+bridge/usage-cache.tmp
 __pycache__/
 tools/.venv/
 sim/build/

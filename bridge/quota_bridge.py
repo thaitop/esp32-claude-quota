@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Serve Claude Code quota state as JSON on the LAN for an ESP32 display.
 
-Primary source is ~/.claude/.statusline-usage-cache, which the Claude Usage app
-refreshes with authoritative server-side utilization percentages. Reading it
-costs nothing and cannot trip a rate limit.
+Primary source is the Utilization Cache written by fetch_usage.py, which owns
+the claude.ai credential and the outbound request. Reading a file costs nothing
+and cannot trip a rate limit, so the display may poll as often as it likes
+without that reaching claude.ai -- which is the reason the fetch lives in a
+separate process rather than here.
 
 When that cache is missing or stale, fall back to aggregating token counts from
 ~/.claude/projects/**/*.jsonl. The fallback reports raw token totals, not a
@@ -31,10 +33,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 CLAUDE_DIR = Path.home() / ".claude"
-CACHE_FILE = CLAUDE_DIR / ".statusline-usage-cache"
 PROJECTS_DIR = CLAUDE_DIR / "projects"
 
-# The cache is written by an external app; treat it as unusable past this age.
+# Written by fetch_usage.py, which owns the credential and the outbound request.
+# It sits beside this script rather than under ~/.claude for the same reason
+# history.log does: that directory belongs to Claude Code and is not ours.
+CACHE_FILE = Path(__file__).resolve().parent / "usage-cache"
+
+# The cache is written by another process on its own schedule; treat it as
+# unusable past this age however the last read went.
 CACHE_MAX_AGE_S = 30 * 60
 
 # Samples live beside this script rather than under ~/.claude, which belongs to
@@ -401,6 +408,11 @@ class QuotaHandler(BaseHTTPRequestHandler):
 
 
 def main() -> int:
+    # read_cache() is called from request threads and from record_sample(), so
+    # the chosen path lands in the module global rather than being threaded
+    # through both as a parameter that would only ever carry this one value.
+    global CACHE_FILE
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="0.0.0.0", help="bind address")
     parser.add_argument("--port", type=int, default=8787, help="listen port")
@@ -409,9 +421,17 @@ def main() -> int:
         action="store_true",
         help="skip jsonl token aggregation (faster, less data)",
     )
+    parser.add_argument(
+        "--cache",
+        type=Path,
+        default=CACHE_FILE,
+        help=f"utilization cache to read (default: {CACHE_FILE})",
+    )
     parser.add_argument("--once", action="store_true", help="print payload and exit")
     parser.add_argument("-v", "--verbose", action="store_true", help="log requests")
     args = parser.parse_args()
+
+    CACHE_FILE = args.cache
 
     if args.once:
         print(json.dumps(build_payload(not args.no_tokens), indent=2))

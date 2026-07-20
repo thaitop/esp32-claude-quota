@@ -1,0 +1,6 @@
+#!/bin/sh
+# Launcher for quota_bridge.py. See claude-quota-fetch for why this file exists
+# rather than pointing the plist at the interpreter directly.
+set -e
+DIR=$(cd "$(dirname "$0")" && pwd)
+exec "${CLAUDE_QUOTA_PYTHON:-/opt/homebrew/bin/python3.13}" -u "$DIR/quota_bridge.py" "$@"

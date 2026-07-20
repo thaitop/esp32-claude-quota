@@ -1,0 +1,14 @@
+#!/bin/sh
+# Launcher for fetch_usage.py.
+#
+# This exists for its filename. macOS lists background items in System Settings
+# by the name of the executable launchd runs, not by the job's Label -- so a
+# plist pointing straight at the interpreter shows up as "python3.13", and two
+# such jobs are indistinguishable from each other and from anything else on the
+# machine that happens to be Python.
+#
+# -u because launchd redirects stdout to a file, and Python buffers when it is
+# not a terminal, which would swallow the startup banner and every error.
+set -e
+DIR=$(cd "$(dirname "$0")" && pwd)
+exec "${CLAUDE_QUOTA_PYTHON:-/opt/homebrew/bin/python3.13}" -u "$DIR/fetch_usage.py" "$@"
