@@ -44,7 +44,8 @@ FACES = [
     ("font_inter_27", 27),  # "Usage" in the header
     ("font_inter_17", 17),  # body copy
     ("font_inter_15", 15),  # pill badges, status word
-    ("font_inter_14", 14),  # reset countdown, captions
+    ("font_inter_14", 14),  # captions
+    ("font_inter_12", 12),  # reset countdown
 ]
 
 

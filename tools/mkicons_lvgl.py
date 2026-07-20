@@ -34,10 +34,16 @@ INTER = ROOT / "fonts" / "Inter.ttf"
 
 SS = 4  # supersample factor
 
-TILE = 28  # navbar tile, drawn larger than the 18px the old build used
-# ~22% of the side. At 8 the corners eat so much of a 28px square that the
-# tile reads as a circle rather than as the squircle in the design.
-TILE_R = 6
+# Tile glyphs are drawn in a 28-unit space, which is the size the artwork was
+# first laid out at. UNIT rescales that to whatever TILE is now, so growing the
+# tiles does not mean re-deriving every coordinate below.
+GLYPH_SPACE = 28
+
+# Navbar tile. Grown from 28: at that size the five tiles left 38px of air
+# between them, wider than the tiles themselves, and the row read as sparse.
+TILE = 34
+TILE_R = 8  # ~22% of the side, which is a squircle rather than a circle
+UNIT = SS * TILE / GLYPH_SPACE
 
 # Mirrors the palette in theme.h. Kept as RGB888 here because PIL works in
 # 8/8/8; the pack to RGB565 happens at the end, once, in one place.
@@ -87,7 +93,7 @@ def sparkle(draw: ImageDraw.ImageDraw, cx: float, cy: float, r: float, colour: s
 
 def icon_claude() -> Image.Image:
     img, draw = tile_base(C_CLAUDE_BG)
-    s = SS
+    s = UNIT
     sparkle(draw, 16 * s, 16 * s, 9 * s, C_CLAUDE_FG)
     sparkle(draw, 8.5 * s, 8.5 * s, 4.5 * s, C_CLAUDE_FG2)
     return finish(img, TILE, TILE)
@@ -95,7 +101,7 @@ def icon_claude() -> Image.Image:
 
 def icon_weekly() -> Image.Image:
     img, draw = tile_base(C_WEEK_BG)
-    s = SS
+    s = UNIT
     for x, top in ((7, 16), (12.5, 8), (18, 12)):
         draw.rounded_rectangle(
             [x * s, top * s, (x + 3.5) * s, 21 * s], radius=1.5 * s, fill=C_WEEK_FG
@@ -105,7 +111,7 @@ def icon_weekly() -> Image.Image:
 
 def icon_weather() -> Image.Image:
     img, draw = tile_base(C_WEATHER_BG)
-    s = SS
+    s = UNIT
     draw.ellipse([15 * s, 5 * s, 24 * s, 14 * s], fill=C_WEATHER_SUN)
     # Cloud: three overlapping discs with a slab across their base.
     draw.ellipse([5 * s, 12 * s, 15 * s, 22 * s], fill=C_WEATHER_FG)
@@ -118,7 +124,7 @@ def icon_weather() -> Image.Image:
 
 def icon_crypto() -> Image.Image:
     img, draw = tile_base(C_CRYPTO_BG)
-    s = SS
+    s = UNIT
     # Inter has no Bitcoin sign, so the mark is a capital B from the same face
     # with the two vertical strokes added -- which is how the glyph is built
     # anyway, and keeps it visually related to the rest of the type.
@@ -135,7 +141,7 @@ def icon_crypto() -> Image.Image:
 
 def icon_setting() -> Image.Image:
     img, draw = tile_base(C_SETTING_BG)
-    s = SS
+    s = UNIT
     cx = cy = 14 * s
     # Eight teeth as rotated squares around the hub reads as a gear at 28px;
     # a true involute profile disappears at this size.

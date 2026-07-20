@@ -76,7 +76,7 @@ constexpr int32_t TOUCH_RAW_MAX_Y = 3690;
 
 // The navbar draws 40px tall but accepts touches over a taller strip: resistive
 // panels and a stylus tip do not agree about where the edge is.
-constexpr int16_t NAV_VISUAL_H = 40;
+constexpr int16_t NAV_VISUAL_H = 44;
 constexpr int16_t NAV_TOUCH_H = 56;
 
 // ---------------------------------------------------------------------------

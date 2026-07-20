@@ -18,7 +18,9 @@ constexpr int16_t HEADER_H = 34;
 constexpr int16_t CARD_X = 8;
 constexpr int16_t CARD_W = display::WIDTH - 2 * CARD_X;
 constexpr int16_t CARD_H = 76;
-constexpr int16_t CARD_Y[2] = {38, 118};
+// Shifted up two pixels from the first pass to make room for the taller
+// navbar the 34px tiles need.
+constexpr int16_t CARD_Y[2] = {36, 114};
 
 // The vertical stack inside a 76px card, with the real font metrics rather
 // than round numbers: Inter 36 sets a 44px line, Inter 14 an 18px one. The
@@ -32,7 +34,7 @@ constexpr int16_t PILL_H = 22;
 constexpr int16_t PILL_PAD = 13;
 constexpr int16_t BAR_Y = 45;   // 45..53
 constexpr int16_t BAR_H = 8;
-constexpr int16_t FOOT_Y = 55;  // 55..73, six pixels clear of the bar
+constexpr int16_t FOOT_Y = 57;  // 57..72 at Inter 12, four clear of the bar
 constexpr int16_t CLOCK = 14;
 
 struct CardWidgets {
@@ -138,7 +140,7 @@ void buildCard(CardWidgets &card, lv_obj_t *parent, int index, const char *badge
   lv_obj_set_style_bg_opa(card.bar, LV_OPA_COVER, LV_PART_INDICATOR);
   lv_obj_set_style_bg_grad_dir(card.bar, LV_GRAD_DIR_HOR, LV_PART_INDICATOR);
 
-  card.resets = makeLabel(card.root, &font_inter_14, theme::MUTED);
+  card.resets = makeLabel(card.root, &font_inter_12, theme::MUTED);
   lv_obj_set_pos(card.resets, PAD + CLOCK + 6, FOOT_Y);
 
   card.clock = lv_image_create(card.root);

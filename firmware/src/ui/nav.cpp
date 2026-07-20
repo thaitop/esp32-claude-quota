@@ -13,9 +13,16 @@ constexpr int16_t NAV_X = 8;
 constexpr int16_t NAV_W = display::WIDTH - 2 * NAV_X;
 constexpr int16_t NAV_Y = display::HEIGHT - NAV_VISUAL_H - 2;
 constexpr int16_t SLOT_W = NAV_W / SLOTS;
-constexpr int16_t ICON = 28;
+constexpr int16_t ICON = 34;
 constexpr int16_t MARK_W = 26;
 constexpr int16_t MARK_H = 2;
+
+// Inset equally on all four sides. Centring each tile inside its fifth of the
+// bar put the outer two 16px from the edge while the bar's own height left
+// only 6px above and below them, and the row read as though it had been
+// squeezed vertically.
+constexpr int16_t NAV_PAD = (NAV_VISUAL_H - ICON) / 2;
+constexpr int16_t ICON_GAP = (NAV_W - 2 * NAV_PAD - SLOTS * ICON) / (SLOTS - 1);
 
 // Inactive tiles are dimmed rather than greyed. The design used a coloured
 // label under each icon to show which was live; with the labels gone, the
@@ -38,7 +45,10 @@ const lv_image_dsc_t *iconFor(int slot) {
   }
 }
 
-int16_t slotCentre(int slot) { return NAV_X + slot * SLOT_W + SLOT_W / 2; }
+// Where the tile sits. The touch targets still tile the bar in equal fifths,
+// so the gaps between tiles stay live rather than becoming dead strips.
+int16_t iconLeft(int slot) { return NAV_X + NAV_PAD + slot * (ICON + ICON_GAP); }
+int16_t iconCentre(int slot) { return iconLeft(slot) + ICON / 2; }
 
 void onSlotPressed(lv_event_t *event) {
   const int slot = (int)(intptr_t)lv_event_get_user_data(event);
@@ -71,7 +81,7 @@ void buildShell(lv_obj_t *parent) {
   for (int i = 0; i < SLOTS; i++) {
     lv_obj_t *tile = lv_image_create(parent);
     lv_image_set_src(tile, iconFor(i));
-    lv_obj_set_pos(tile, slotCentre(i) - ICON / 2, NAV_Y + (NAV_VISUAL_H - ICON) / 2);
+    lv_obj_set_pos(tile, iconLeft(i), NAV_Y + NAV_PAD);
     icons[i] = tile;
 
     // The touch target is taller than the tile it sits behind. A stylus on a
@@ -113,7 +123,7 @@ void showScreen(Screen screen) {
     lv_obj_set_style_opa(icons[i], i == slot ? OPA_ACTIVE : OPA_IDLE, LV_PART_MAIN);
   }
 
-  lv_obj_set_pos(marker, slotCentre(slot) - MARK_W / 2,
+  lv_obj_set_pos(marker, iconCentre(slot) - MARK_W / 2,
                  NAV_Y + NAV_VISUAL_H - MARK_H - 2);
 }
 
