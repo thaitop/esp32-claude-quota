@@ -1,6 +1,7 @@
 #include "display.h"
 
 #include <Arduino.h>
+#include <Preferences.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
@@ -20,6 +21,20 @@ constexpr uint8_t TOUCH_CS = 33;
 constexpr uint8_t TOUCH_IRQ = 36;
 constexpr uint8_t BACKLIGHT_PIN = 21;
 
+// The backlight is dimmed by PWM rather than switched. 5kHz is well above what
+// the eye or a phone camera picks up as flicker, and 8 bits is more resolution
+// than a control that steps in tenths can ask for. Channel 0 is free: nothing
+// else on this board uses LEDC.
+constexpr uint8_t BACKLIGHT_CHANNEL = 0;
+constexpr uint32_t BACKLIGHT_FREQ_HZ = 5000;
+constexpr uint8_t BACKLIGHT_RESOLUTION = 8;
+constexpr uint32_t BACKLIGHT_MAX_DUTY = (1u << BACKLIGHT_RESOLUTION) - 1;
+
+// One namespace, one key. Written only when the level actually changes, so
+// holding a button does not walk the flash.
+constexpr char NVS_NAMESPACE[] = "display";
+constexpr char NVS_KEY_BRIGHTNESS[] = "bright";
+
 // One tenth of the display, double buffered: 320 x 24 x 2 bytes each. Sized in
 // ADR-0003 against the 45KB a TLS handshake peaks at. Growing these is how you
 // get allocation failures that surface as reboots hours later.
@@ -36,8 +51,18 @@ lv_indev_t *lvTouch = nullptr;
 uint8_t *bufA = nullptr;
 uint8_t *bufB = nullptr;
 bool lit = true;
+uint8_t level = BACKLIGHT_DEFAULT_PCT;
+Preferences prefs;
 int16_t rawX = -1;
 int16_t rawY = -1;
+
+// The one place a percentage becomes a duty cycle. Blanking is folded in here
+// rather than kept as a separate path, so "off" and "10%" cannot drift apart
+// into two different ways of driving the same pin.
+void applyBacklight() {
+  const uint32_t duty = lit ? (uint32_t)level * BACKLIGHT_MAX_DUTY / 100 : 0;
+  ledcWrite(BACKLIGHT_CHANNEL, duty);
+}
 
 void flush(lv_display_t *disp, const lv_area_t *area, uint8_t *pixels) {
   const uint32_t w = area->x2 - area->x1 + 1;
@@ -79,14 +104,29 @@ uint32_t millisForLvgl() { return (uint32_t)millis(); }
 }  // namespace
 
 bool begin() {
+  // Dark until there is something worth looking at. TFT_eSPI drives TFT_BL
+  // itself during init(), so this only holds until then -- which is why the
+  // LEDC attach below comes after, and not before: attaching first and then
+  // letting init() digitalWrite() the same pin hands it back to the GPIO
+  // matrix, and the dimming silently stops working at every level but full.
   pinMode(BACKLIGHT_PIN, OUTPUT);
-  setBacklight(true);
+  digitalWrite(BACKLIGHT_PIN, LOW);
 
   tft.init();
   // Landscape with the USB socket on the right, as confirmed on the board --
   // rotation 3 is the same orientation flipped end for end.
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
+
+  prefs.begin(NVS_NAMESPACE, false);
+  level = prefs.getUChar(NVS_KEY_BRIGHTNESS, BACKLIGHT_DEFAULT_PCT);
+  if (level < BACKLIGHT_MIN_PCT) level = BACKLIGHT_MIN_PCT;
+  if (level > BACKLIGHT_MAX_PCT) level = BACKLIGHT_MAX_PCT;
+
+  ledcSetup(BACKLIGHT_CHANNEL, BACKLIGHT_FREQ_HZ, BACKLIGHT_RESOLUTION);
+  ledcAttachPin(BACKLIGHT_PIN, BACKLIGHT_CHANNEL);
+  lit = true;
+  applyBacklight();
 
   touchSpi.begin(TOUCH_CLK, TOUCH_MISO, TOUCH_MOSI, TOUCH_CS);
   touch.begin(touchSpi);
@@ -123,11 +163,23 @@ bool begin() {
 void tick() { lv_timer_handler(); }
 
 void setBacklight(bool on) {
-  digitalWrite(BACKLIGHT_PIN, on ? HIGH : LOW);
   lit = on;
+  applyBacklight();
 }
 
 bool backlightOn() { return lit; }
+
+void setBrightness(uint8_t percent) {
+  if (percent < BACKLIGHT_MIN_PCT) percent = BACKLIGHT_MIN_PCT;
+  if (percent > BACKLIGHT_MAX_PCT) percent = BACKLIGHT_MAX_PCT;
+  if (percent == level) return;
+
+  level = percent;
+  applyBacklight();
+  prefs.putUChar(NVS_KEY_BRIGHTNESS, level);
+}
+
+uint8_t brightness() { return level; }
 
 uint32_t freeHeap() { return (uint32_t)ESP.getFreeHeap(); }
 

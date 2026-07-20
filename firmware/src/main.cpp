@@ -82,6 +82,12 @@ void connectWifi() {
   }
 }
 
+// The band the card gestures own: below the title, above the navbar. Anything
+// outside it belongs to a widget that handles its own taps.
+bool overCards(const lv_point_t &point) {
+  return point.y >= HEADER_TOUCH_H && point.y < display::HEIGHT - NAV_TOUCH_H;
+}
+
 void handleTouch() {
   static bool wasDown = false;
   static uint32_t pressStart = 0;
@@ -98,12 +104,13 @@ void handleTouch() {
 
   if (isDown && !longFired && millis() - pressStart > LONG_PRESS_MS) {
     longFired = true;
-    // Only above the navbar. Holding on a slot would otherwise blank the
+    // Only over the cards. Holding on a navbar slot would otherwise blank the
     // screen and then switch to that slot on release, since LVGL still emits
-    // the click -- two commands from one gesture.
+    // the click -- two commands from one gesture. The same is true of the
+    // brightness steppers in the title band.
     lv_point_t point;
     lv_indev_get_point(indev, &point);
-    if (point.y < display::HEIGHT - NAV_TOUCH_H) {
+    if (overCards(point)) {
       display::setBacklight(!display::backlightOn());
     }
   }
@@ -114,7 +121,7 @@ void handleTouch() {
     } else {
       lv_point_t point;
       lv_indev_get_point(indev, &point);
-      if (point.y < display::HEIGHT - NAV_TOUCH_H) net::refreshAll();
+      if (overCards(point)) net::refreshAll();
     }
   }
 

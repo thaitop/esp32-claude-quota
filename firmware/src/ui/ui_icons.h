@@ -16,6 +16,7 @@ extern const lv_image_dsc_t icon_setting;
 extern const lv_image_dsc_t img_mascot;
 extern const lv_image_dsc_t glyph_clock;
 extern const lv_image_dsc_t glyph_wifi;
+extern const lv_image_dsc_t glyph_brightness;
 extern const lv_image_dsc_t wx_clear_day;
 extern const lv_image_dsc_t wx_clear_night;
 extern const lv_image_dsc_t wx_partly_day;

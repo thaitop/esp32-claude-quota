@@ -108,6 +108,35 @@ constexpr int32_t TOUCH_RAW_MAX_Y = 3690;
 constexpr int16_t NAV_VISUAL_H = 44;
 constexpr int16_t NAV_TOUCH_H = 56;
 
+// The title band across the top of every screen, which the two global gestures
+// -- hold to blank, tap to refresh -- do not apply to.
+//
+// Both gestures are aimed at the cards: "tap a card to refresh it" is a card
+// affordance, and the band above them carries a heading and, on the Setting
+// screen, the brightness stepper. Without this, every tap on a stepper button
+// also queued a full refresh of all three feeds, whose fetches block the loop
+// -- so the second tap on the button did not register until the network was
+// done, and dimming the display felt like it was fighting the device. Nothing
+// in this band is a card, so nothing in it should mean "refresh".
+constexpr int16_t HEADER_TOUCH_H = 34;
+
+// ---------------------------------------------------------------------------
+// Backlight
+// ---------------------------------------------------------------------------
+
+// Percentages, because that is what the Setting screen shows and what gets
+// stored -- the duty cycle is derived at the one place that talks to LEDC.
+//
+// The floor is 10 rather than 0: at 0 the panel is indistinguishable from a
+// device that has crashed, and the display already has a way to go dark that
+// says so on purpose (hold anywhere above the navbar). A control that can
+// silently produce the same result as a fault is a control that will one day
+// be mistaken for one.
+constexpr uint8_t BACKLIGHT_MIN_PCT = 10;
+constexpr uint8_t BACKLIGHT_MAX_PCT = 100;
+constexpr uint8_t BACKLIGHT_STEP_PCT = 10;
+constexpr uint8_t BACKLIGHT_DEFAULT_PCT = 100;
+
 // ---------------------------------------------------------------------------
 // Colour ramp thresholds
 // ---------------------------------------------------------------------------

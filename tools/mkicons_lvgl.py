@@ -273,6 +273,38 @@ def icon_wifi() -> Image.Image:
     return finish(img, w, h)
 
 
+def icon_brightness() -> Image.Image:
+    """A sun, for the brightness stepper on the Setting screen.
+
+    Deliberately the same shape as the weather screen's clear-day sun, because
+    a second symbol for "light" would be a second thing to learn. This one is
+    the white master, so the Setting screen can tint it to match the labels
+    around it rather than carrying the weather palette into the header.
+
+    The disc is small relative to the rays: at 16px a sun drawn to fill its box
+    reads as a plain dot, and a dot beside two stepper buttons says nothing.
+    """
+    from math import cos, radians, sin
+
+    size = 16
+    img, draw = canvas(size, size)
+    s = SS
+    cx = cy = 8 * s
+    r = 3.2 * s
+
+    for i in range(8):
+        angle = radians(i * 45)
+        inner, outer = r * 1.7, r * 2.3
+        dx, dy = cos(angle), sin(angle)
+        draw.line(
+            [cx + dx * inner, cy + dy * inner, cx + dx * outer, cy + dy * outer],
+            fill=GLYPH_W,
+            width=int(1.4 * s),
+        )
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=GLYPH_W)
+    return finish(img, size, size)
+
+
 # --- weather conditions ----------------------------------------------------
 #
 # WMO's code space is a hundred values deep; model.cpp collapses it into the
@@ -562,6 +594,7 @@ IMAGES = [
     ("img_mascot", icon_mascot),
     ("glyph_clock", icon_clock),
     ("glyph_wifi", icon_wifi),
+    ("glyph_brightness", icon_brightness),
     ("wx_clear_day", wx_clear_day),
     ("wx_clear_night", wx_clear_night),
     ("wx_partly_day", wx_partly_day),

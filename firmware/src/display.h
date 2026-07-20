@@ -20,8 +20,18 @@ bool begin();
 // Drives LVGL's timers. Call every loop; it rate-limits itself.
 void tick();
 
+// Blanks or restores the panel. "On" means at whatever brightness was last
+// set, not full -- the two are independent: blanking is a gesture, brightness
+// is a setting that survives it and survives a reboot.
 void setBacklight(bool on);
 bool backlightOn();
+
+// Brightness as a percentage, clamped to BACKLIGHT_MIN_PCT..BACKLIGHT_MAX_PCT
+// and rounded to nothing -- the Setting screen steps it, this just stores it.
+// Persisted to NVS, so the device comes back at the level it was left at.
+// Setting it while the panel is blanked stores the value without lighting it.
+void setBrightness(uint8_t percent);
+uint8_t brightness();
 
 // Free heap in bytes, for the Setting screen's diagnostics readout.
 uint32_t freeHeap();
