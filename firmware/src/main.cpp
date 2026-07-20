@@ -14,7 +14,9 @@
 #include "config.h"
 #include "display.h"
 #include "model.h"
+#include "ui/nav.h"
 #include "ui/screen_claude.h"
+#include "ui/screen_placeholder.h"
 #include "ui/theme.h"
 
 namespace {
@@ -50,7 +52,14 @@ void handleTouch() {
 
   if (isDown && !longFired && millis() - pressStart > LONG_PRESS_MS) {
     longFired = true;
-    display::setBacklight(!display::backlightOn());
+    // Only above the navbar. Holding on a slot would otherwise blank the
+    // screen and then switch to that slot on release, since LVGL still emits
+    // the click -- two commands from one gesture.
+    lv_point_t point;
+    lv_indev_get_point(indev, &point);
+    if (point.y < display::HEIGHT - NAV_TOUCH_H) {
+      display::setBacklight(!display::backlightOn());
+    }
   }
 
   if (!isDown && wasDown && !longFired && !display::backlightOn()) {
@@ -78,7 +87,12 @@ void setup() {
   lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 
   seedModel();
-  ui::buildClaudeScreen(screen);
+  ui::buildShell(screen);
+  ui::buildClaudeScreen(ui::page(ui::Screen::Claude));
+  ui::buildPlaceholder(ui::page(ui::Screen::Weekly), "Weekly", "7-day history");
+  ui::buildPlaceholder(ui::page(ui::Screen::Weather), "Weather", "Open-Meteo");
+  ui::buildPlaceholder(ui::page(ui::Screen::Crypto), "Crypto", "CoinGecko");
+  ui::buildPlaceholder(ui::page(ui::Screen::Setting), "Setting", "diagnostics");
   ui::updateClaudeScreen(model);
 
   Serial.printf("claude screen up, heap=%u\n", (unsigned)display::freeHeap());
