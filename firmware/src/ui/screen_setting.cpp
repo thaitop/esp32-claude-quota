@@ -6,6 +6,7 @@
 #include "fonts/ui_fonts.h"
 #include "format.h"
 #include "theme.h"
+#include "ui_icons.h"
 #include "widgets.h"
 
 namespace ui {
@@ -89,7 +90,7 @@ void setFeedRow(Row row, const FeedStatus &status, uint32_t nowMs) {
 }  // namespace
 
 void buildSettingScreen(lv_obj_t *parent) {
-  makeTitle(parent, "Setting");
+  makeTitle(parent, "Setting", &icon_setting);
 
   for (uint8_t i = 0; i < RowCount; i++) {
     lv_obj_t *label = makeLabel(parent, &font_inter_12, theme::MUTED);

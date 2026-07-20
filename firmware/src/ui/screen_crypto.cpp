@@ -51,11 +51,11 @@ void buildCryptoScreen(lv_obj_t *parent) {
   // navbar tile already said which category this is. It comes from the same
   // place as the id that is fetched, so changing the tracked coin cannot leave
   // the title naming the old one.
-  makeTitle(parent, CRYPTO_COIN_NAME);
-
-  lv_obj_t *tile = lv_image_create(parent);
-  lv_image_set_src(tile, &icon_crypto);
-  lv_obj_align(tile, LV_ALIGN_TOP_RIGHT, -PAD, 2);
+  //
+  // The tile that used to sit at the top right moved to the left of the title.
+  // It said the same thing in both places, and the one beside the word is the
+  // one that reads as a heading rather than as a second, unexplained marker.
+  makeTitle(parent, CRYPTO_COIN_NAME, &icon_crypto);
 
   card = makeCard(parent, PAD, CARD_Y, display::WIDTH - 2 * PAD, CARD_H);
 

@@ -72,7 +72,7 @@ bool sameAsShown(const WeatherSnapshot &weather) {
 }  // namespace
 
 void buildWeatherScreen(lv_obj_t *parent) {
-  makeTitle(parent, "Weather");
+  makeTitle(parent, "Weather", &icon_weather);
 
   card = makeCard(parent, PAD, CARD_Y, display::WIDTH - 2 * PAD, CARD_H);
 
