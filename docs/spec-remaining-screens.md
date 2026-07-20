@@ -84,8 +84,8 @@ by attaching a cable.
     and how long ago it last succeeded, so that I can tell which feed is broken
     rather than guessing.
 17. As someone diagnosing a stuck display, I want the Staleness of the current
-    quota reading, so that I can tell a dead bridge from a dead Claude Usage
-    app.
+    quota reading, so that I can tell a dead bridge from a stale Utilization
+    Cache.
 18. As someone diagnosing a stuck display, I want free heap and uptime, so that
     I can spot a slow leak or an unexplained reboot without a serial cable.
 19. As someone diagnosing a stuck display, I want the device's own IP address

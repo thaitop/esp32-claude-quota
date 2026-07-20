@@ -1,10 +1,13 @@
 # Quota goes through the bridge; weather and crypto do not
 
-The Bridge Feed has to exist — utilization lives in a file under `~/.claude` that
-only the Mac can read, and putting credentials or filesystem access on the device
-was never acceptable. The Weather and Crypto feeds have no such constraint, so
-they are fetched straight from Open-Meteo and CoinGecko by the ESP32 rather than
-being proxied through the bridge as well.
+The Bridge Feed has to exist — utilization comes from a cookie-authenticated
+claude.ai endpoint, and that cookie is a full account credential. An ESP32 holds
+whatever it is flashed with in plaintext that `esptool read-flash` recovers, so
+the credential stays on the host and the device is handed a percentage.
+
+The Weather and Crypto feeds have no such constraint, so they are fetched
+straight from Open-Meteo and CoinGecko by the ESP32 rather than being proxied
+through the bridge as well.
 
 ## Considered options
 

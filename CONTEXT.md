@@ -33,8 +33,8 @@ remaining, never as a wall-clock timestamp.
 _Avoid_: expiry, refresh, rollover
 
 **Utilization Cache**:
-The `~/.claude/.statusline-usage-cache` file, written by the Claude Usage app,
-holding server-side utilization figures. The only trustworthy origin of
+The `bridge/usage-cache` file, written by `fetch_usage.py` and read by the
+bridge, holding server-side utilization figures. The only trustworthy origin of
 utilization in this system.
 _Avoid_: statusline file, usage file
 

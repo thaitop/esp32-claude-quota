@@ -11,6 +11,7 @@ name.
 
 ## Consequences
 
-The screen goes blank-ish whenever the Claude Usage app stops maintaining
-`~/.claude/.statusline-usage-cache`, and there is no fallback that makes it look
-alive. That is intended: the failure is visible rather than silently wrong.
+The screen goes blank-ish whenever `fetch_usage.py` stops maintaining the
+Utilization Cache — an expired session key, a changed endpoint, a sleeping
+host — and there is no fallback that makes it look alive. That is intended: the
+failure is visible rather than silently wrong.
