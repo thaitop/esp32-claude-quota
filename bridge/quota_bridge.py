@@ -172,37 +172,45 @@ def _secs_until(iso: str | None, now: datetime) -> int | None:
 
 
 def build_payload(include_tokens: bool = True) -> dict:
-    """Assemble the JSON the firmware consumes. Keys are short to keep it small."""
+    """Assemble the JSON the firmware consumes.
+
+    Field names follow CONTEXT.md rather than being abbreviated. The old short
+    keys saved about eighty bytes on a LAN with a 1500-byte MTU, and cost a
+    translation table between the two halves of the system: the same "src"
+    field meant "why the reading is or is not trustworthy" here and "how the
+    HTTP request went" on the device, which are different things that both
+    have names now.
+    """
     now = datetime.now(timezone.utc)
     cache = read_cache()
-    payload: dict = {"ts": int(now.timestamp())}
+    payload: dict = {"recordedAt": int(now.timestamp())}
 
-    if cache and cache["age_s"] <= CACHE_MAX_AGE_S:
-        payload["ok"] = True
-        payload["src"] = "cache"
-        payload["age"] = cache["age_s"]
-        payload["profile"] = cache["profile"] or ""
-        payload["five"] = {
-            "pct": cache["five_pct"],
-            "secs": _secs_until(cache["five_reset"], now),
+    fresh = bool(cache) and cache["age_s"] <= CACHE_MAX_AGE_S
+
+    payload["trusted"] = fresh
+    payload["trustReason"] = "fresh" if fresh else ("stale" if cache else "missing")
+    payload["stalenessSeconds"] = cache["age_s"] if cache else None
+    payload["profile"] = (cache or {}).get("profile") or ""
+
+    if fresh:
+        payload["session"] = {
+            "utilization": cache["five_pct"],
+            "secondsToReset": _secs_until(cache["five_reset"], now),
         }
-        payload["week"] = {
-            "pct": cache["week_pct"],
-            "secs": _secs_until(cache["week_reset"], now),
+        payload["weekly"] = {
+            "utilization": cache["week_pct"],
+            "secondsToReset": _secs_until(cache["week_reset"], now),
         }
     else:
-        # No trustworthy percentage available. Say so rather than inventing one.
-        payload["ok"] = False
-        payload["src"] = "stale" if cache else "missing"
-        payload["age"] = cache["age_s"] if cache else None
-        payload["profile"] = (cache or {}).get("profile") or ""
-        payload["five"] = {"pct": None, "secs": None}
-        payload["week"] = {"pct": None, "secs": None}
+        # No trustworthy utilization available. Say so rather than inventing
+        # one -- see ADR-0001.
+        payload["session"] = {"utilization": None, "secondsToReset": None}
+        payload["weekly"] = {"utilization": None, "secondsToReset": None}
 
     if include_tokens:
-        five = sum_tokens(FIVE_HOUR_S, now)
-        payload["tok5h"] = five["total"]
-        payload["msg5h"] = five["messages"]
+        session = sum_tokens(FIVE_HOUR_S, now)
+        payload["sessionTokenTotal"] = session["total"]
+        payload["sessionMessageCount"] = session["messages"]
 
     return payload
 

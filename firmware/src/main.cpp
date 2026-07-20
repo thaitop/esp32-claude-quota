@@ -1,19 +1,22 @@
 // Claude quota monitor for the ESP32-2432S028R ("Cheap Yellow Display").
 //
-// Step 7 of the rewrite: the Claude screen, drawn from the model. There is no
-// network layer yet, so the model is seeded with the figures from the design
-// and the countdowns tick locally -- which is exactly the comparison worth
-// making, since it puts the real values on the real panel next to the mock.
+// Polls the bridge on the Mac for the two quota windows and renders them as
+// cards with a live countdown. No credential lives on the device: the bridge
+// does all the reading of ~/.claude, and only percentages cross the wire.
 //
-// Touch: hold ~1s to blank the screen. Tapping will select navbar slots once
-// the navbar exists.
+// Touch: tap a navbar slot to switch screens, hold ~1s over a card to blank
+// the display, tap a card to force a refresh.
 
 #include <Arduino.h>
+#include <WiFi.h>
 #include <lvgl.h>
 
 #include "config.h"
 #include "display.h"
 #include "model.h"
+#include "net/bridge.h"
+#include "net/poller.h"
+#include "secrets.h"
 #include "ui/nav.h"
 #include "ui/screen_claude.h"
 #include "ui/screen_placeholder.h"
@@ -23,17 +26,23 @@ namespace {
 
 AppModel model;
 
-// The figures from the design, so the board can be held next to the mock.
-// Replaced by the bridge feed in a later step.
-void seedModel() {
-  model.wifiAssociated = true;
-  model.quota.trusted = true;
-  model.quota.session.trusted = true;
-  model.quota.session.utilization = 50;
-  model.quota.session.secondsToReset = 1 * 3600 + 22 * 60;
-  model.quota.weekly.trusted = true;
-  model.quota.weekly.utilization = 11;
-  model.quota.weekly.secondsToReset = 6 * 86400 + 8 * 3600;
+void connectWifi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  const uint32_t deadline = millis() + WIFI_CONNECT_TIMEOUT_MS;
+  while (WiFi.status() != WL_CONNECTED && millis() < deadline) {
+    delay(250);
+  }
+
+  model.wifiAssociated = WiFi.status() == WL_CONNECTED;
+  if (model.wifiAssociated) {
+    Serial.printf("wifi ok, ip=%s, bridge=%s\n", WiFi.localIP().toString().c_str(),
+                  BRIDGE_BASE_URL);
+  } else {
+    Serial.println("wifi failed, will keep retrying");
+  }
 }
 
 void handleTouch() {
@@ -62,8 +71,14 @@ void handleTouch() {
     }
   }
 
-  if (!isDown && wasDown && !longFired && !display::backlightOn()) {
-    display::setBacklight(true);
+  if (!isDown && wasDown && !longFired) {
+    if (!display::backlightOn()) {
+      display::setBacklight(true);
+    } else {
+      lv_point_t point;
+      lv_indev_get_point(indev, &point);
+      if (point.y < display::HEIGHT - NAV_TOUCH_H) net::refreshAll();
+    }
   }
 
   wasDown = isDown;
@@ -86,7 +101,6 @@ void setup() {
   lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 
-  seedModel();
   ui::buildShell(screen);
   ui::buildClaudeScreen(ui::page(ui::Screen::Claude));
   ui::buildPlaceholder(ui::page(ui::Screen::Weekly), "Weekly", "7-day history");
@@ -94,20 +108,41 @@ void setup() {
   ui::buildPlaceholder(ui::page(ui::Screen::Crypto), "Crypto", "CoinGecko");
   ui::buildPlaceholder(ui::page(ui::Screen::Setting), "Setting", "diagnostics");
   ui::updateClaudeScreen(model);
+  display::tick();
 
-  Serial.printf("claude screen up, heap=%u\n", (unsigned)display::freeHeap());
+  connectWifi();
+  net::registerFeed(Feed::Bridge, net::fetchQuota, POLL_QUOTA_MS);
+
+  Serial.printf("ready, heap=%u\n", (unsigned)display::freeHeap());
 }
 
 void loop() {
-  static uint32_t lastTick = 0;
+  static uint32_t lastSecond = 0;
 
   display::tick();
   handleTouch();
 
-  // Count the reset timers down locally so they run smoothly between polls.
   const uint32_t now = millis();
-  if (now - lastTick >= 1000) {
-    lastTick = now;
+  const bool associated = WiFi.status() == WL_CONNECTED;
+  if (associated != model.wifiAssociated) {
+    model.wifiAssociated = associated;
+    if (!associated) WiFi.reconnect();
+    ui::updateClaudeScreen(model);
+  }
+
+  if (net::service(model, now)) {
+    const FeedStatus &status = model.status(Feed::Bridge);
+    Serial.printf("bridge: %s  session=%d%%  weekly=%d%%  stale=%us  heap=%u\n",
+                  describe(status.outcome), (int)model.quota.session.utilization,
+                  (int)model.quota.weekly.utilization,
+                  (unsigned)model.quota.stalenessSeconds,
+                  (unsigned)display::freeHeap());
+    ui::updateClaudeScreen(model);
+  }
+
+  // Count the reset timers down locally so they run smoothly between polls.
+  if (now - lastSecond >= 1000) {
+    lastSecond = now;
     if (model.quota.session.secondsToReset > 0) model.quota.session.secondsToReset--;
     if (model.quota.weekly.secondsToReset > 0) model.quota.weekly.secondsToReset--;
     ui::updateClaudeScreen(model);
