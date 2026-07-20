@@ -164,6 +164,20 @@ cd firmware
 ~/.local/bin/pio device monitor
 ```
 
+Redirect the upload to a file rather than piping it through `tail` or `grep`:
+
+```bash
+~/.local/bin/pio run --target upload > /tmp/upload.log 2>&1; echo "exit=$?"
+grep -E "Hash of data|Hard resetting|SUCCESS|FAILED" /tmp/upload.log
+```
+
+`pio` writes a couple of hundred lines and an agent shell truncates from the
+end, so a piped `tail` returns the *header* — the dependency graph and the
+memory table — and the `SUCCESS` line never arrives. That looks exactly like a
+flash that did not finish, and the obvious response is to run it again. The
+board takes fifty seconds a time and the second attempt reads no better than the
+first. The exit code and the log file settle it in one pass.
+
 The Setting screen is a readout, not an editor. Changing configuration means
 reflashing, which is the accepted cost of never fighting an on-screen keyboard
 with a stylus.
