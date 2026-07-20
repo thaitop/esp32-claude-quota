@@ -1,18 +1,12 @@
-// Claude quota monitor -- LVGL bring-up smoke test and touch calibration.
+// Claude quota monitor for the ESP32-2432S028R ("Cheap Yellow Display").
 //
-// Step 4 of the rewrite: prove the panel, the draw buffers and the touch
-// mapping before any real UI is built on them. The screens, the feeds and the
-// navbar land in later commits.
+// Step 7 of the rewrite: the Claude screen, drawn from the model. There is no
+// network layer yet, so the model is seeded with the figures from the design
+// and the countdowns tick locally -- which is exactly the comparison worth
+// making, since it puts the real values on the real panel next to the mock.
 //
-// It runs in two phases. First it walks four crosshairs around the display and
-// records the raw controller reading at each, then prints the calibration
-// constants to paste into config.h -- guessing an offset from "about 3mm" would
-// have folded any scale error into it. Then it shows colour swatches and a
-// dot that tracks the stylus.
-//
-// The swatches matter more than they look: white and black are unchanged by a
-// byte swap, so a screen made only of those cannot tell a correctly wired panel
-// from one rendering every colour wrong.
+// Touch: hold ~1s to blank the screen. Tapping will select navbar slots once
+// the navbar exists.
 
 #include <Arduino.h>
 #include <lvgl.h>
@@ -20,214 +14,50 @@
 #include "config.h"
 #include "display.h"
 #include "model.h"
-#include "ui/fonts/ui_fonts.h"
-#include "ui/ui_icons.h"
+#include "ui/screen_claude.h"
+#include "ui/theme.h"
 
 namespace {
 
-// Where the crosshairs sit, in screen coordinates. Inset from the corners
-// because the very edge of a resistive panel reads non-linearly.
-constexpr int16_t TARGET_INSET_X = 20;
-constexpr int16_t TARGET_INSET_Y = 20;
-constexpr int16_t TARGETS[4][2] = {
-    {TARGET_INSET_X, TARGET_INSET_Y},
-    {display::WIDTH - 1 - TARGET_INSET_X, TARGET_INSET_Y},
-    {TARGET_INSET_X, display::HEIGHT - 1 - TARGET_INSET_Y},
-    {display::WIDTH - 1 - TARGET_INSET_X, display::HEIGHT - 1 - TARGET_INSET_Y},
-};
+AppModel model;
 
-enum class Phase { Calibrating, Running };
-
-Phase phase = Phase::Calibrating;
-uint8_t targetIndex = 0;
-int16_t capturedX[4] = {0};
-int16_t capturedY[4] = {0};
-
-lv_obj_t *hintLabel = nullptr;
-lv_obj_t *heapLabel = nullptr;
-lv_obj_t *readoutLabel = nullptr;
-lv_obj_t *crossH = nullptr;
-lv_obj_t *crossV = nullptr;
-lv_obj_t *dot = nullptr;
-uint32_t touchCount = 0;
-
-lv_obj_t *makeLabel(lv_obj_t *parent, uint32_t colour, lv_align_t align, int16_t dy) {
-  lv_obj_t *label = lv_label_create(parent);
-  lv_obj_set_style_text_color(label, lv_color_hex(colour), LV_PART_MAIN);
-  lv_obj_align(label, align, 0, dy);
-  return label;
+// The figures from the design, so the board can be held next to the mock.
+// Replaced by the bridge feed in a later step.
+void seedModel() {
+  model.wifiAssociated = true;
+  model.quota.trusted = true;
+  model.quota.session.trusted = true;
+  model.quota.session.utilization = 50;
+  model.quota.session.secondsToReset = 1 * 3600 + 22 * 60;
+  model.quota.weekly.trusted = true;
+  model.quota.weekly.utilization = 11;
+  model.quota.weekly.secondsToReset = 6 * 86400 + 8 * 3600;
 }
 
-lv_obj_t *makeBox(lv_obj_t *parent, int16_t w, int16_t h, uint32_t colour) {
-  lv_obj_t *box = lv_obj_create(parent);
-  lv_obj_remove_style_all(box);
-  lv_obj_set_size(box, w, h);
-  lv_obj_set_style_bg_color(box, lv_color_hex(colour), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(box, LV_OPA_COVER, LV_PART_MAIN);
-  return box;
-}
-
-void placeCrosshair() {
-  const int16_t x = TARGETS[targetIndex][0];
-  const int16_t y = TARGETS[targetIndex][1];
-  lv_obj_set_pos(crossH, x - 12, y);
-  lv_obj_set_pos(crossV, x, y - 12);
-  lv_label_set_text_fmt(hintLabel, "tap the cross  (%u of 4)", targetIndex + 1);
-}
-
-// Fit screen coordinates to raw readings with a straight line through the two
-// inset positions, then extrapolate out to the panel edges. Averaging the two
-// samples on each edge cancels most of the tilt in a hand-held stylus.
-void reportCalibration() {
-  const long rawLeft = (capturedX[0] + capturedX[2]) / 2;
-  const long rawRight = (capturedX[1] + capturedX[3]) / 2;
-  const long rawTop = (capturedY[0] + capturedY[1]) / 2;
-  const long rawBottom = (capturedY[2] + capturedY[3]) / 2;
-
-  const long spanX = TARGETS[1][0] - TARGETS[0][0];
-  const long spanY = TARGETS[2][1] - TARGETS[0][1];
-  if (spanX == 0 || spanY == 0) return;
-
-  const long minX = rawLeft - (rawRight - rawLeft) * TARGETS[0][0] / spanX;
-  const long maxX =
-      minX + (rawRight - rawLeft) * (display::WIDTH - 1) / spanX;
-  const long minY = rawTop - (rawBottom - rawTop) * TARGETS[0][1] / spanY;
-  const long maxY =
-      minY + (rawBottom - rawTop) * (display::HEIGHT - 1) / spanY;
-
-  Serial.println("\n--- paste into firmware/src/config.h ---");
-  Serial.printf("constexpr int32_t TOUCH_RAW_MIN_X = %ld;\n", minX);
-  Serial.printf("constexpr int32_t TOUCH_RAW_MAX_X = %ld;\n", maxX);
-  Serial.printf("constexpr int32_t TOUCH_RAW_MIN_Y = %ld;\n", minY);
-  Serial.printf("constexpr int32_t TOUCH_RAW_MAX_Y = %ld;\n", maxY);
-  Serial.println("----------------------------------------");
-  Serial.printf("(currently compiled in: X %ld..%ld  Y %ld..%ld)\n",
-                (long)TOUCH_RAW_MIN_X, (long)TOUCH_RAW_MAX_X, (long)TOUCH_RAW_MIN_Y,
-                (long)TOUCH_RAW_MAX_Y);
-}
-
-void enterRunningPhase() {
-  phase = Phase::Running;
-  lv_obj_add_flag(crossH, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_add_flag(crossV, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_text(hintLabel, "calibration printed to serial");
-
-  lv_obj_t *screen = lv_screen_active();
-
-  // Pure primaries at full saturation. Under a byte swap red renders as a dark
-  // blue, green as a dark cyan-grey, and blue as near-black -- unmistakable.
-  struct Swatch {
-    uint32_t colour;
-    const char *name;
-  };
-  static const Swatch swatches[] = {
-      {0xFF0000, "R"}, {0x00FF00, "G"}, {0x0000FF, "B"}, {0xF5822E, "accent"},
-  };
-
-  int16_t x = 24;
-  for (const Swatch &s : swatches) {
-    lv_obj_t *box = makeBox(screen, 52, 22, s.colour);
-    lv_obj_set_pos(box, x, 64);
-    lv_obj_t *caption = lv_label_create(screen);
-    lv_label_set_text(caption, s.name);
-    lv_obj_set_style_text_color(caption, lv_color_hex(0x9A9AA0), LV_PART_MAIN);
-    lv_obj_set_style_text_font(caption, &font_inter_14, LV_PART_MAIN);
-    lv_obj_set_pos(caption, x, 88);
-    x += 72;
-  }
-
-  // The generated artwork and type, referenced so the linker keeps it: an
-  // unused const in a .c file is stripped by -fdata-sections, so "it built"
-  // proves nothing about whether these actually work.
-  lv_obj_t *mascot = lv_image_create(screen);
-  lv_image_set_src(mascot, &img_mascot);
-  lv_obj_set_pos(mascot, 12, 108);
-
-  lv_obj_t *sample = lv_label_create(screen);
-  lv_label_set_text(sample, "Usage 50%");
-  lv_obj_set_style_text_color(sample, lv_color_white(), LV_PART_MAIN);
-  lv_obj_set_style_text_font(sample, &font_inter_27, LV_PART_MAIN);
-  lv_obj_set_pos(sample, 48, 106);
-
-  static const lv_image_dsc_t *icons[] = {&icon_claude, &icon_weekly, &icon_weather,
-                                          &icon_crypto, &icon_setting};
-  int16_t ix = 24;
-  for (const lv_image_dsc_t *src : icons) {
-    lv_obj_t *tile = lv_image_create(screen);
-    lv_image_set_src(tile, src);
-    lv_obj_set_pos(tile, ix, 152);
-    ix += 56;
-  }
-}
-
-void buildScreen() {
-  lv_obj_t *screen = lv_screen_active();
-  lv_obj_set_style_bg_color(screen, lv_color_black(), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
-
-  hintLabel = makeLabel(screen, 0xFFFFFF, LV_ALIGN_TOP_MID, 12);
-  heapLabel = makeLabel(screen, 0x9A9AA0, LV_ALIGN_TOP_MID, 36);
-  readoutLabel = makeLabel(screen, 0x9A9AA0, LV_ALIGN_BOTTOM_MID, -12);
-  lv_label_set_text(readoutLabel, "");
-
-  crossH = makeBox(screen, 25, 3, 0xF5822E);
-  crossV = makeBox(screen, 3, 25, 0xF5822E);
-
-  dot = makeBox(screen, 16, 16, 0xF5822E);
-  lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-  lv_obj_add_flag(dot, LV_OBJ_FLAG_HIDDEN);
-
-  placeCrosshair();
-}
-
-// Fires once per touch, on release, with the raw reading taken at press time.
-void onTouchReleased(int16_t rx, int16_t ry, lv_point_t mapped) {
-  touchCount++;
-
-  if (phase == Phase::Calibrating) {
-    capturedX[targetIndex] = rx;
-    capturedY[targetIndex] = ry;
-    Serial.printf("target %u at (%d,%d) -> raw (%d,%d)\n", targetIndex + 1,
-                  TARGETS[targetIndex][0], TARGETS[targetIndex][1], rx, ry);
-
-    targetIndex++;
-    if (targetIndex >= 4) {
-      reportCalibration();
-      enterRunningPhase();
-    } else {
-      placeCrosshair();
-    }
-    return;
-  }
-
-  lv_label_set_text_fmt(readoutLabel, "raw %d,%d  ->  %d,%d   (%u)", rx, ry,
-                        (int)mapped.x, (int)mapped.y, touchCount);
-}
-
-void pollTouch() {
-  static bool wasPressed = false;
-  static int16_t pressRawX = 0;
-  static int16_t pressRawY = 0;
-  static lv_point_t pressPoint = {0, 0};
+void handleTouch() {
+  static bool wasDown = false;
+  static uint32_t pressStart = 0;
+  static bool longFired = false;
 
   lv_indev_t *indev = lv_indev_get_next(nullptr);
   if (indev == nullptr) return;
+  const bool isDown = lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED;
 
-  const bool pressed = lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED;
-
-  if (pressed) {
-    lv_indev_get_point(indev, &pressPoint);
-    display::lastRawTouch(pressRawX, pressRawY);
-    if (phase == Phase::Running) {
-      lv_obj_remove_flag(dot, LV_OBJ_FLAG_HIDDEN);
-      lv_obj_set_pos(dot, pressPoint.x - 8, pressPoint.y - 8);
-    }
-  } else if (wasPressed) {
-    lv_obj_add_flag(dot, LV_OBJ_FLAG_HIDDEN);
-    onTouchReleased(pressRawX, pressRawY, pressPoint);
+  if (isDown && !wasDown) {
+    pressStart = millis();
+    longFired = false;
   }
 
-  wasPressed = pressed;
+  if (isDown && !longFired && millis() - pressStart > LONG_PRESS_MS) {
+    longFired = true;
+    display::setBacklight(!display::backlightOn());
+  }
+
+  if (!isDown && wasDown && !longFired && !display::backlightOn()) {
+    display::setBacklight(true);
+  }
+
+  wasDown = isDown;
 }
 
 }  // namespace
@@ -235,29 +65,38 @@ void pollTouch() {
 void setup() {
   Serial.begin(115200);
   delay(200);
-  Serial.printf("\nboot, heap=%u, AppModel=%u bytes\n", (unsigned)ESP.getFreeHeap(),
-                (unsigned)sizeof(AppModel));
+  Serial.printf("\nboot, heap=%u\n", (unsigned)ESP.getFreeHeap());
 
   if (!display::begin()) {
     Serial.println("display bring-up failed, halting");
     while (true) delay(1000);
   }
 
-  buildScreen();
-  Serial.println("tap each crosshair once, starting top-left");
+  lv_obj_t *screen = lv_screen_active();
+  lv_obj_set_style_bg_color(screen, theme::colour(theme::BG), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
+
+  seedModel();
+  ui::buildClaudeScreen(screen);
+  ui::updateClaudeScreen(model);
+
+  Serial.printf("claude screen up, heap=%u\n", (unsigned)display::freeHeap());
 }
 
 void loop() {
-  static uint32_t lastHeapUpdate = 0;
+  static uint32_t lastTick = 0;
 
   display::tick();
-  pollTouch();
+  handleTouch();
 
+  // Count the reset timers down locally so they run smoothly between polls.
   const uint32_t now = millis();
-  if (now - lastHeapUpdate >= 1000) {
-    lastHeapUpdate = now;
-    lv_label_set_text_fmt(heapLabel, "heap %u   up %us", (unsigned)display::freeHeap(),
-                          (unsigned)(now / 1000));
+  if (now - lastTick >= 1000) {
+    lastTick = now;
+    if (model.quota.session.secondsToReset > 0) model.quota.session.secondsToReset--;
+    if (model.quota.weekly.secondsToReset > 0) model.quota.weekly.secondsToReset--;
+    ui::updateClaudeScreen(model);
   }
 
   delay(5);

@@ -14,6 +14,8 @@ extern const lv_image_dsc_t icon_weather;
 extern const lv_image_dsc_t icon_crypto;
 extern const lv_image_dsc_t icon_setting;
 extern const lv_image_dsc_t img_mascot;
+extern const lv_image_dsc_t glyph_clock;
+extern const lv_image_dsc_t glyph_wifi;
 
 #ifdef __cplusplus
 }
