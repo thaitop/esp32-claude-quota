@@ -25,4 +25,13 @@ bool service(AppModel &model, uint32_t nowMs);
 // Forces every feed due immediately -- the manual refresh gesture.
 void refreshAll();
 
+// Counts the manual refreshes asked for so far.
+//
+// A Feed that keeps a slower sub-schedule inside its own slot -- the Bridge
+// Feed's history is the only one -- cannot see refreshAll() reset a timer it
+// owns privately, so it compares this instead. Without it, tapping the Weekly
+// screen refreshed the quota and left the chart to wait out its ten minutes,
+// which is exactly the wait the gesture exists to skip.
+uint32_t refreshGeneration();
+
 }  // namespace net

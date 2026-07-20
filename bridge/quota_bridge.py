@@ -10,6 +10,10 @@ When that cache is missing or stale, fall back to aggregating token counts from
 percentage -- Anthropic's limit accounting is not a plain token sum, so any
 percentage derived from tokens would be a guess presented as a fact.
 
+A Sample is recorded each time a trustworthy reading is served, which is what
+the Weekly Usage screen plots. Recording on read rather than on a timer means
+there is no second scheduler here and nothing runs when nothing is watching.
+
 No credentials are read and no outbound requests are made.
 """
 
@@ -20,6 +24,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -31,6 +36,23 @@ PROJECTS_DIR = CLAUDE_DIR / "projects"
 
 # The cache is written by an external app; treat it as unusable past this age.
 CACHE_MAX_AGE_S = 30 * 60
+
+# Samples live beside this script rather than under ~/.claude, which belongs to
+# Claude Code and is not ours to write into.
+HISTORY_FILE = Path(__file__).resolve().parent / "history.log"
+
+# One Sample per three hours: 56 over seven days, which is what the firmware's
+# fixed-size ring holds. A display polling every 20 seconds would otherwise
+# write about 4,000 rows a day.
+HISTORY_BUCKET_S = 3 * 60 * 60
+HISTORY_RETENTION_S = 30 * 24 * 60 * 60
+HISTORY_MAX_SAMPLES = 56
+
+# Rewriting the file to drop old lines is only worth doing once it has grown
+# past a few weeks of samples. At ~20 bytes a line this is around 1,600 of them.
+HISTORY_PRUNE_BYTES = 32 * 1024
+
+_history_lock = threading.Lock()
 
 FIVE_HOUR_S = 5 * 60 * 60
 WEEK_S = 7 * 24 * 60 * 60
@@ -171,6 +193,122 @@ def _secs_until(iso: str | None, now: datetime) -> int | None:
     return max(0, int((stamp - now).total_seconds()))
 
 
+def _parse_history_line(line: str) -> tuple[int, int, int] | None:
+    """One Sample: `<unix seconds> <session pct> <weekly pct>`.
+
+    Hand-editable and hand-truncatable on purpose -- the whole point of the
+    format is that a week of history can be inspected with `tail` and repaired
+    with an editor rather than with a migration.
+    """
+    parts = line.split()
+    if len(parts) != 3:
+        return None
+    try:
+        recorded_at, session, weekly = (int(part) for part in parts)
+    except ValueError:
+        return None
+    return recorded_at, session, weekly
+
+
+def read_history(days: int) -> list[dict]:
+    """The Samples inside the trailing window, oldest first."""
+    cutoff = int(time.time()) - days * 86400
+    samples: list[dict] = []
+
+    try:
+        with HISTORY_FILE.open("r", encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                parsed = _parse_history_line(line)
+                if parsed is None or parsed[0] < cutoff:
+                    continue
+                recorded_at, session, weekly = parsed
+                samples.append(
+                    {
+                        "recordedAt": recorded_at,
+                        "session": session,
+                        "weekly": weekly,
+                    }
+                )
+    except OSError:
+        return []
+
+    # Keep the newest if there are somehow more than the firmware's ring holds:
+    # a truncated tail is a shorter curve, a truncated head is a wrong one.
+    return samples[-HISTORY_MAX_SAMPLES:]
+
+
+def _last_recorded_bucket() -> int | None:
+    """The bucket of the last line, or None if there is no usable one."""
+    try:
+        with HISTORY_FILE.open("rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(max(0, size - 256))
+            tail = handle.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return None
+
+    for line in reversed(tail):
+        parsed = _parse_history_line(line)
+        if parsed is not None:
+            return parsed[0] // HISTORY_BUCKET_S
+    return None
+
+
+def _prune_history() -> None:
+    """Drop Samples past the retention window. Cheap because it rarely runs."""
+    try:
+        if HISTORY_FILE.stat().st_size < HISTORY_PRUNE_BYTES:
+            return
+    except OSError:
+        return
+
+    cutoff = int(time.time()) - HISTORY_RETENTION_S
+    try:
+        kept = [
+            line
+            for line in HISTORY_FILE.read_text(encoding="utf-8", errors="replace").splitlines()
+            if (parsed := _parse_history_line(line)) is not None and parsed[0] >= cutoff
+        ]
+    except OSError:
+        return
+
+    temporary = HISTORY_FILE.with_suffix(".log.tmp")
+    try:
+        temporary.write_text("\n".join(kept) + "\n", encoding="utf-8")
+        temporary.replace(HISTORY_FILE)
+    except OSError:
+        temporary.unlink(missing_ok=True)
+
+
+def record_sample(payload: dict) -> None:
+    """Append a Sample for this reading, at most one per resolution bucket.
+
+    Both utilizations are stored even though only the weekly one is plotted
+    today: the cost is a few bytes a line and history cannot be regenerated
+    after the fact.
+    """
+    if not payload.get("trusted"):
+        return
+    session = payload["session"]["utilization"]
+    weekly = payload["weekly"]["utilization"]
+    if session is None or weekly is None:
+        return
+
+    recorded_at = payload["recordedAt"]
+    bucket = recorded_at // HISTORY_BUCKET_S
+
+    with _history_lock:
+        if _last_recorded_bucket() == bucket:
+            return
+        try:
+            with HISTORY_FILE.open("a", encoding="utf-8") as handle:
+                handle.write(f"{recorded_at} {session} {weekly}\n")
+        except OSError:
+            return
+        _prune_history()
+
+
 def build_payload(include_tokens: bool = True) -> dict:
     """Assemble the JSON the firmware consumes.
 
@@ -212,20 +350,37 @@ def build_payload(include_tokens: bool = True) -> dict:
         payload["sessionTokenTotal"] = session["total"]
         payload["sessionMessageCount"] = session["messages"]
 
+    record_sample(payload)
     return payload
+
+
+def _days_from(query: str) -> int:
+    """The `days` parameter, clamped. A missing or silly value means a week."""
+    for pair in query.split("&"):
+        key, sep, value = pair.partition("=")
+        if key == "days" and sep:
+            try:
+                return max(1, min(30, int(value)))
+            except ValueError:
+                break
+    return 7
 
 
 class QuotaHandler(BaseHTTPRequestHandler):
     server_version = "ClaudeQuotaBridge/1.0"
 
     def do_GET(self) -> None:  # noqa: N802 - name fixed by BaseHTTPRequestHandler
-        path = self.path.split("?", 1)[0].rstrip("/") or "/"
-        if path not in ("/", "/quota"):
+        path, _, query = self.path.partition("?")
+        path = path.rstrip("/") or "/"
+        if path not in ("/", "/quota", "/history"):
             self.send_error(404, "Not Found")
             return
 
         try:
-            payload = build_payload(include_tokens=self.server.include_tokens)
+            if path == "/history":
+                payload = {"samples": read_history(_days_from(query))}
+            else:
+                payload = build_payload(include_tokens=self.server.include_tokens)
             body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         except Exception as exc:  # keep the server alive for the next poll
             body = json.dumps({"ok": False, "src": "error", "err": str(exc)[:120]}).encode()
@@ -268,6 +423,7 @@ def main() -> int:
 
     print(f"claude quota bridge listening on http://{args.host}:{args.port}/quota")
     print(f"  cache file : {CACHE_FILE} ({'found' if CACHE_FILE.exists() else 'MISSING'})")
+    print(f"  history    : {HISTORY_FILE} ({len(read_history(7))} samples over 7d)")
     print(f"  token scan : {'off' if args.no_tokens else 'on'}")
     try:
         server.serve_forever()

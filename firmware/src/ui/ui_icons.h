@@ -16,6 +16,15 @@ extern const lv_image_dsc_t icon_setting;
 extern const lv_image_dsc_t img_mascot;
 extern const lv_image_dsc_t glyph_clock;
 extern const lv_image_dsc_t glyph_wifi;
+extern const lv_image_dsc_t wx_clear_day;
+extern const lv_image_dsc_t wx_clear_night;
+extern const lv_image_dsc_t wx_partly_day;
+extern const lv_image_dsc_t wx_partly_night;
+extern const lv_image_dsc_t wx_cloudy;
+extern const lv_image_dsc_t wx_fog;
+extern const lv_image_dsc_t wx_rain;
+extern const lv_image_dsc_t wx_snow;
+extern const lv_image_dsc_t wx_storm;
 
 #ifdef __cplusplus
 }

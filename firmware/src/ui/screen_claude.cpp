@@ -7,6 +7,7 @@
 #include "format.h"
 #include "theme.h"
 #include "ui_icons.h"
+#include "widgets.h"
 
 namespace ui {
 namespace {
@@ -57,25 +58,6 @@ lv_obj_t *statusLabel = nullptr;
 lv_obj_t *statusDot = nullptr;
 lv_obj_t *wifiGlyph = nullptr;
 int shownStatus = -1;
-
-lv_obj_t *makeLabel(lv_obj_t *parent, const lv_font_t *font, uint32_t colour) {
-  lv_obj_t *label = lv_label_create(parent);
-  lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
-  lv_obj_set_style_text_color(label, theme::colour(colour), LV_PART_MAIN);
-  return label;
-}
-
-lv_obj_t *makePanel(lv_obj_t *parent, int16_t w, int16_t h, int16_t radius,
-                    uint32_t fill) {
-  lv_obj_t *panel = lv_obj_create(parent);
-  lv_obj_remove_style_all(panel);
-  lv_obj_set_size(panel, w, h);
-  lv_obj_set_style_radius(panel, radius, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(panel, theme::colour(fill), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_remove_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
-  return panel;
-}
 
 void buildHeader(lv_obj_t *parent) {
   lv_obj_t *mascot = lv_image_create(parent);

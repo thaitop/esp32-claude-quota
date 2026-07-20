@@ -16,6 +16,8 @@ struct Entry {
 
 Entry entries[(size_t)Feed::Count];
 
+uint32_t refreshes = 0;
+
 // How long to wait after a failure. Backs off so a bridge that is down does
 // not mean a request every five seconds for the rest of the day, but stays
 // responsive enough that recovery is noticed quickly.
@@ -36,7 +38,10 @@ void registerFeed(Feed feed, FetchFn fetch, uint32_t intervalMs) {
 
 void refreshAll() {
   for (Entry &entry : entries) entry.dueAtMs = 0;
+  refreshes++;
 }
+
+uint32_t refreshGeneration() { return refreshes; }
 
 bool service(AppModel &model, uint32_t nowMs) {
   // Pick the most overdue feed rather than the first one due, so a fast feed

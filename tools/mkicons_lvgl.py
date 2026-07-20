@@ -62,6 +62,18 @@ C_SETTING_FG = "#B4B4BA"
 C_MASCOT_TOP = (0xF0, 0x4A, 0x2A)
 C_MASCOT_BOTTOM = (0xFF, 0x8A, 0x3D)
 
+# Weather condition glyphs. Drawn at the size the Weather screen shows them,
+# in colour rather than as white masters: the sun is amber and the cloud is
+# blue on every one of them, so there is nothing for a recolor style to decide.
+WX = 48
+C_WX_SUN = "#FFB020"
+C_WX_MOON = "#CDBCEC"
+C_WX_CLOUD = "#3CB4FF"
+C_WX_CLOUD_DIM = "#7C8B9E"
+C_WX_DROP = "#3CB4FF"
+C_WX_SNOW = "#FFFFFF"
+C_WX_BOLT = "#FFD400"
+
 
 def canvas(w: int, h: int) -> tuple[Image.Image, ImageDraw.ImageDraw]:
     img = Image.new("RGBA", (w * SS, h * SS), (0, 0, 0, 0))
@@ -244,6 +256,169 @@ def icon_wifi() -> Image.Image:
     return finish(img, w, h)
 
 
+# --- weather conditions ----------------------------------------------------
+#
+# WMO's code space is a hundred values deep; model.cpp collapses it into the
+# seven conditions below, times day and night for the two that differ. Drawing
+# one glyph per code would be sixty pictures nobody can tell apart at 48px.
+
+
+def _sun(draw: ImageDraw.ImageDraw, cx: float, cy: float, r: float, rays: bool):
+    from math import cos, radians, sin
+
+    if rays:
+        for i in range(8):
+            angle = radians(i * 45)
+            inner, outer = r * 1.35, r * 1.95
+            dx, dy = cos(angle), sin(angle)
+            draw.line(
+                [cx + dx * inner, cy + dy * inner, cx + dx * outer, cy + dy * outer],
+                fill=C_WX_SUN,
+                width=int(2.2 * SS),
+            )
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=C_WX_SUN)
+
+
+def _moon(draw: ImageDraw.ImageDraw, cx: float, cy: float, r: float):
+    """A crescent: a disc with a second disc erased out of it.
+
+    ImageDraw writes raw channel values into an RGBA image rather than
+    compositing, so filling with a zero alpha genuinely cuts the bite out.
+    """
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=C_WX_MOON)
+    bite = r * 0.86
+    draw.ellipse(
+        [cx - bite + r * 0.62, cy - bite - r * 0.28,
+         cx + bite + r * 0.62, cy + bite - r * 0.28],
+        fill=(0, 0, 0, 0),
+    )
+
+
+def _cloud(draw: ImageDraw.ImageDraw, cx: float, cy: float, w: float, colour: str):
+    """Three overlapping discs on a slab, the same construction as the tile."""
+    h = w * 0.62
+    draw.ellipse([cx - w * 0.50, cy - h * 0.55, cx - w * 0.02, cy + h * 0.42], fill=colour)
+    draw.ellipse([cx - w * 0.12, cy - h * 0.80, cx + w * 0.40, cy + h * 0.35], fill=colour)
+    draw.ellipse([cx + w * 0.12, cy - h * 0.35, cx + w * 0.52, cy + h * 0.45], fill=colour)
+    draw.rounded_rectangle(
+        [cx - w * 0.48, cy - h * 0.05, cx + w * 0.50, cy + h * 0.45],
+        radius=h * 0.25,
+        fill=colour,
+    )
+
+
+def _wx_canvas():
+    return canvas(WX, WX)
+
+
+def wx_clear_day() -> Image.Image:
+    img, draw = _wx_canvas()
+    s = SS
+    _sun(draw, 24 * s, 24 * s, 11 * s, rays=True)
+    return finish(img, WX, WX)
+
+
+def wx_clear_night() -> Image.Image:
+    img, draw = _wx_canvas()
+    s = SS
+    _moon(draw, 24 * s, 24 * s, 15 * s)
+    return finish(img, WX, WX)
+
+
+def wx_partly_day() -> Image.Image:
+    img, draw = _wx_canvas()
+    s = SS
+    _sun(draw, 31 * s, 16 * s, 8 * s, rays=True)
+    _cloud(draw, 22 * s, 31 * s, 30 * s, C_WX_CLOUD)
+    return finish(img, WX, WX)
+
+
+def wx_partly_night() -> Image.Image:
+    img, draw = _wx_canvas()
+    s = SS
+    _moon(draw, 31 * s, 15 * s, 10 * s)
+    _cloud(draw, 22 * s, 31 * s, 30 * s, C_WX_CLOUD)
+    return finish(img, WX, WX)
+
+
+def wx_cloudy() -> Image.Image:
+    img, draw = _wx_canvas()
+    s = SS
+    # The back cloud is dimmed so the two read as depth rather than as one
+    # lumpy shape.
+    _cloud(draw, 29 * s, 19 * s, 24 * s, C_WX_CLOUD_DIM)
+    _cloud(draw, 21 * s, 29 * s, 32 * s, C_WX_CLOUD)
+    return finish(img, WX, WX)
+
+
+def wx_fog() -> Image.Image:
+    img, draw = _wx_canvas()
+    s = SS
+    _cloud(draw, 24 * s, 19 * s, 32 * s, C_WX_CLOUD_DIM)
+    # Staggered bars, because three equal ones read as a hamburger menu.
+    for y, (x0, x1) in zip((33, 39, 45), ((9, 39), (13, 43), (9, 35))):
+        draw.rounded_rectangle(
+            [x0 * s, (y - 1.4) * s, x1 * s, (y + 1.4) * s],
+            radius=1.4 * s,
+            fill=C_WX_CLOUD,
+        )
+    return finish(img, WX, WX)
+
+
+def _streaks(draw: ImageDraw.ImageDraw, colour: str):
+    s = SS
+    for x in (15, 24, 33):
+        draw.line(
+            [x * s, 32 * s, (x - 3) * s, 43 * s], fill=colour, width=int(2.6 * SS)
+        )
+
+
+def wx_rain() -> Image.Image:
+    img, draw = _wx_canvas()
+    s = SS
+    _cloud(draw, 24 * s, 18 * s, 32 * s, C_WX_CLOUD)
+    _streaks(draw, C_WX_DROP)
+    return finish(img, WX, WX)
+
+
+def wx_snow() -> Image.Image:
+    img, draw = _wx_canvas()
+    s = SS
+    _cloud(draw, 24 * s, 18 * s, 32 * s, C_WX_CLOUD_DIM)
+    # Three-armed asterisks. Six arms turn to mush once resampled to 48px.
+    from math import cos, radians, sin
+
+    for cx, cy in ((14, 37), (24, 41), (34, 37)):
+        for i in range(3):
+            angle = radians(i * 60 + 30)
+            dx, dy = cos(angle) * 4 * s, sin(angle) * 4 * s
+            draw.line(
+                [cx * s - dx, cy * s - dy, cx * s + dx, cy * s + dy],
+                fill=C_WX_SNOW,
+                width=int(1.8 * SS),
+            )
+    return finish(img, WX, WX)
+
+
+def wx_storm() -> Image.Image:
+    img, draw = _wx_canvas()
+    s = SS
+    _cloud(draw, 24 * s, 18 * s, 32 * s, C_WX_CLOUD_DIM)
+    draw.polygon(
+        [
+            (26 * s, 29 * s),
+            (16 * s, 39 * s),
+            (22 * s, 39 * s),
+            (19 * s, 47 * s),
+            (31 * s, 35 * s),
+            (24 * s, 35 * s),
+            (28 * s, 29 * s),
+        ],
+        fill=C_WX_BOLT,
+    )
+    return finish(img, WX, WX)
+
+
 def pack_rgb565a8(img: Image.Image) -> bytes:
     """RGB565 little-endian plane, then the alpha plane."""
     rgb = bytearray()
@@ -292,6 +467,15 @@ IMAGES = [
     ("img_mascot", icon_mascot),
     ("glyph_clock", icon_clock),
     ("glyph_wifi", icon_wifi),
+    ("wx_clear_day", wx_clear_day),
+    ("wx_clear_night", wx_clear_night),
+    ("wx_partly_day", wx_partly_day),
+    ("wx_partly_night", wx_partly_night),
+    ("wx_cloudy", wx_cloudy),
+    ("wx_fog", wx_fog),
+    ("wx_rain", wx_rain),
+    ("wx_snow", wx_snow),
+    ("wx_storm", wx_storm),
 ]
 
 BANNER = """// Generated by tools/mkicons_lvgl.py -- do not hand-edit.

@@ -93,6 +93,23 @@ struct HistorySnapshot {
 // Ambient feeds
 // ---------------------------------------------------------------------------
 
+// The WMO code space is a hundred values deep and distinguishes light drizzle
+// from moderate drizzle. At 48 pixels on a panel read from across a room those
+// are the same picture, so the codes collapse into the set below and the icon
+// generator draws one glyph per condition rather than one per code.
+enum class WeatherCondition : uint8_t {
+  Clear = 0,
+  PartlyCloudy,
+  Cloudy,
+  Fog,
+  Rain,
+  Snow,
+  Storm,
+};
+
+WeatherCondition conditionFor(uint8_t wmoCode);
+const char *describe(WeatherCondition condition);
+
 struct WeatherSnapshot {
   bool trusted = false;
   float temperatureC = 0.0f;
@@ -100,6 +117,8 @@ struct WeatherSnapshot {
   uint8_t code = 0;  // WMO weather interpretation code, as Open-Meteo reports it
   bool isDay = true;
   int16_t humidityPct = -1;
+
+  WeatherCondition condition() const { return conditionFor(code); }
 };
 
 struct CryptoSnapshot {
@@ -120,8 +139,15 @@ struct AppModel {
 
   FeedStatus feeds[(size_t)Feed::Count];
 
+  // What the Setting screen reports about the link. Recorded here rather than
+  // read from WiFi.h where it is shown, so the ui layer stays ignorant of the
+  // radio for the same reason it stays ignorant of HTTP -- and so the Setting
+  // screen can be compiled and exercised on the host like every other one.
   bool wifiAssociated = false;
   int32_t rssi = 0;
+  char ipAddress[16] = {0};   // dotted quad, empty until associated
+  const char *ssid = "";      // points at the compiled-in literal
+  const char *bridgeUrl = "";  // likewise; neither changes without a reflash
 
   FeedStatus &status(Feed feed) { return feeds[(size_t)feed]; }
   const FeedStatus &status(Feed feed) const { return feeds[(size_t)feed]; }

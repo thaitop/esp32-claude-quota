@@ -15,16 +15,53 @@
 #include "display.h"
 #include "model.h"
 #include "net/bridge.h"
+#include "net/crypto.h"
 #include "net/poller.h"
+#include "net/weather.h"
 #include "secrets.h"
 #include "ui/nav.h"
 #include "ui/screen_claude.h"
-#include "ui/screen_placeholder.h"
+#include "ui/screen_crypto.h"
+#include "ui/screen_setting.h"
+#include "ui/screen_weather.h"
+#include "ui/screen_weekly.h"
 #include "ui/theme.h"
+#include "ui/widgets.h"
 
 namespace {
 
 AppModel model;
+
+// Copies what the radio knows into the model, so the Setting screen can report
+// the link without including <WiFi.h> -- the same seam that keeps the ui layer
+// out of HTTP, for the same reason.
+void recordLink() {
+  model.wifiAssociated = WiFi.status() == WL_CONNECTED;
+  if (!model.wifiAssociated) {
+    model.rssi = 0;
+    model.ipAddress[0] = '\0';
+    return;
+  }
+  model.rssi = WiFi.RSSI();
+  strncpy(model.ipAddress, WiFi.localIP().toString().c_str(),
+          sizeof(model.ipAddress) - 1);
+  model.ipAddress[sizeof(model.ipAddress) - 1] = '\0';
+}
+
+// Only the Screen being looked at is repainted. The others keep whatever they
+// last drew, which is why switching to one has to update it before it becomes
+// visible -- their update functions are change-detecting, so calling them on
+// the switch redraws exactly what went stale while they were hidden.
+void refreshActiveScreen(uint32_t nowMs) {
+  switch (ui::activeScreen()) {
+    case ui::Screen::Claude:  ui::updateClaudeScreen(model); break;
+    case ui::Screen::Weekly:  ui::updateWeeklyScreen(model); break;
+    case ui::Screen::Weather: ui::updateWeatherScreen(model); break;
+    case ui::Screen::Crypto:  ui::updateCryptoScreen(model); break;
+    case ui::Screen::Setting: ui::updateSettingScreen(model, nowMs); break;
+    default: break;
+  }
+}
 
 void connectWifi() {
   WiFi.mode(WIFI_STA);
@@ -36,10 +73,9 @@ void connectWifi() {
     delay(250);
   }
 
-  model.wifiAssociated = WiFi.status() == WL_CONNECTED;
+  recordLink();
   if (model.wifiAssociated) {
-    Serial.printf("wifi ok, ip=%s, bridge=%s\n", WiFi.localIP().toString().c_str(),
-                  BRIDGE_BASE_URL);
+    Serial.printf("wifi ok, ip=%s, bridge=%s\n", model.ipAddress, model.bridgeUrl);
   } else {
     Serial.println("wifi failed, will keep retrying");
   }
@@ -101,51 +137,87 @@ void setup() {
   lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 
+  // Compiled-in and unchanging, so the model carries them from here rather
+  // than having the Setting screen reach into secrets.h to read them.
+  model.ssid = WIFI_SSID;
+  model.bridgeUrl = BRIDGE_BASE_URL;
+
   ui::buildShell(screen);
   ui::buildClaudeScreen(ui::page(ui::Screen::Claude));
-  ui::buildPlaceholder(ui::page(ui::Screen::Weekly), "Weekly", "7-day history");
-  ui::buildPlaceholder(ui::page(ui::Screen::Weather), "Weather", "Open-Meteo");
-  ui::buildPlaceholder(ui::page(ui::Screen::Crypto), "Crypto", "CoinGecko");
-  ui::buildPlaceholder(ui::page(ui::Screen::Setting), "Setting", "diagnostics");
+  ui::buildWeeklyScreen(ui::page(ui::Screen::Weekly));
+  ui::buildWeatherScreen(ui::page(ui::Screen::Weather));
+  ui::buildCryptoScreen(ui::page(ui::Screen::Crypto));
+  ui::buildSettingScreen(ui::page(ui::Screen::Setting));
   ui::updateClaudeScreen(model);
   display::tick();
 
+  lv_obj_update_layout(screen);
+  ui::warnIfOverflowing("claude", ui::page(ui::Screen::Claude));
+  ui::warnIfOverflowing("weekly", ui::page(ui::Screen::Weekly));
+  ui::warnIfOverflowing("weather", ui::page(ui::Screen::Weather));
+  ui::warnIfOverflowing("crypto", ui::page(ui::Screen::Crypto));
+  ui::warnIfOverflowing("setting", ui::page(ui::Screen::Setting));
+
   connectWifi();
-  net::registerFeed(Feed::Bridge, net::fetchQuota, POLL_QUOTA_MS);
+
+  // Registration order does not set priority -- the poller picks whichever
+  // Feed is most overdue -- but it does set which one goes first at boot,
+  // since they all come due at once and the quota is what the display is for.
+  net::registerFeed(Feed::Bridge, net::fetchBridge, POLL_QUOTA_MS);
+  net::registerFeed(Feed::Weather, net::fetchWeather, POLL_WEATHER_MS);
+  net::registerFeed(Feed::Crypto, net::fetchCrypto, POLL_CRYPTO_MS);
 
   Serial.printf("ready, heap=%u\n", (unsigned)display::freeHeap());
 }
 
 void loop() {
   static uint32_t lastSecond = 0;
+  static ui::Screen lastScreen = ui::Screen::Count;
 
   display::tick();
   handleTouch();
 
   const uint32_t now = millis();
+
+  // Association is a cheap read and worth checking every pass. The address and
+  // the signal strength are not -- localIP().toString() builds a String -- so
+  // they are refreshed on the one-second tick below instead.
   const bool associated = WiFi.status() == WL_CONNECTED;
   if (associated != model.wifiAssociated) {
-    model.wifiAssociated = associated;
+    recordLink();
     if (!associated) WiFi.reconnect();
-    ui::updateClaudeScreen(model);
+    refreshActiveScreen(now);
+  }
+
+  // A Screen that has just come into view is showing whatever it drew before
+  // it was hidden. Switching has to feel like hardware, so this happens on the
+  // same pass as the tap rather than on the next one-second tick.
+  if (ui::activeScreen() != lastScreen) {
+    lastScreen = ui::activeScreen();
+    refreshActiveScreen(now);
   }
 
   if (net::service(model, now)) {
-    const FeedStatus &status = model.status(Feed::Bridge);
-    Serial.printf("bridge: %s  session=%d%%  weekly=%d%%  stale=%us  heap=%u\n",
-                  describe(status.outcome), (int)model.quota.session.utilization,
-                  (int)model.quota.weekly.utilization,
-                  (unsigned)model.quota.stalenessSeconds,
-                  (unsigned)display::freeHeap());
-    ui::updateClaudeScreen(model);
+    Serial.printf(
+        "feeds: bridge=%s weather=%s crypto=%s | session=%d%% weekly=%d%% "
+        "stale=%us | history=%u | %.1fC | $%.2f | heap=%u\n",
+        describe(model.status(Feed::Bridge).outcome),
+        describe(model.status(Feed::Weather).outcome),
+        describe(model.status(Feed::Crypto).outcome),
+        (int)model.quota.session.utilization, (int)model.quota.weekly.utilization,
+        (unsigned)model.quota.stalenessSeconds, (unsigned)model.history.count,
+        (double)model.weather.temperatureC, (double)model.crypto.priceUsd,
+        (unsigned)display::freeHeap());
+    refreshActiveScreen(now);
   }
 
   // Count the reset timers down locally so they run smoothly between polls.
   if (now - lastSecond >= 1000) {
     lastSecond = now;
+    recordLink();
     if (model.quota.session.secondsToReset > 0) model.quota.session.secondsToReset--;
     if (model.quota.weekly.secondsToReset > 0) model.quota.weekly.secondsToReset--;
-    ui::updateClaudeScreen(model);
+    refreshActiveScreen(now);
   }
 
   delay(5);

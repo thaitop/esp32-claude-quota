@@ -30,10 +30,13 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE_TTF = ROOT / "fonts" / "Inter.ttf"
 OUT_DIR = ROOT / "firmware" / "src" / "ui" / "fonts"
 
-# ASCII printable only. Thai glyphs would add roughly 150KB and LVGL's text
-# engine does not stack Thai vowels and tone marks correctly anyway, so the UI
-# is English throughout.
-SYMBOLS_RANGE = "0x20-0x7E"
+# ASCII printable, plus the degree sign the Weather screen needs. Thai glyphs
+# would add roughly 150KB and LVGL's text engine does not stack Thai vowels and
+# tone marks correctly anyway, so the UI is English throughout.
+#
+# U+00B0 is one glyph and about forty bytes a face. Spelling the temperature
+# "30.2 C" instead would have saved that and read like a chemistry answer.
+SYMBOLS_RANGE = "0x20-0x7E,0xB0"
 
 # 4 bits per pixel: 16 levels of anti-aliasing. 8bpp doubles the flash cost for
 # a difference that is not visible on a 240px panel at arm's length.

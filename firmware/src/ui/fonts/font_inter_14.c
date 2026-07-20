@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 14 px
  * Bpp: 4
- * Opts: --font /Users/thaitop/esp32-claude-quota/fonts/Inter.ttf --size 14 --bpp 4 --range 0x20-0x7E --format lvgl --lv-include lvgl.h --no-compress --force-fast-kern-format -o /Users/thaitop/esp32-claude-quota/firmware/src/ui/fonts/font_inter_14.c
+ * Opts: --font /Users/thaitop/esp32-claude-quota/fonts/Inter.ttf --size 14 --bpp 4 --range 0x20-0x7E,0xB0 --format lvgl --lv-include lvgl.h --no-compress --force-fast-kern-format -o /Users/thaitop/esp32-claude-quota/firmware/src/ui/fonts/font_inter_14.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -678,7 +678,12 @@ static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
 
     /* U+007E "~" */
     0x2d, 0xe4, 0x0, 0xb0, 0xaa, 0x5e, 0x54, 0xf0,
-    0xb4, 0x4, 0xff, 0x70, 0x0, 0x0, 0x1, 0x0
+    0xb4, 0x4, 0xff, 0x70, 0x0, 0x0, 0x1, 0x0,
+
+    /* U+00B0 "°" */
+    0x2, 0xce, 0x60, 0xd, 0x73, 0xe3, 0x1f, 0x0,
+    0x97, 0xe, 0x41, 0xd4, 0x4, 0xff, 0x90, 0x0,
+    0x1, 0x0
 };
 
 
@@ -782,7 +787,8 @@ static const lv_font_fmt_txt_glyph_dsc_t glyph_dsc[] = {
     {.bitmap_index = 3305, .adv_w = 95, .box_w = 6, .box_h = 14, .ofs_x = 0, .ofs_y = -3},
     {.bitmap_index = 3347, .adv_w = 74, .box_w = 2, .box_h = 18, .ofs_x = 1, .ofs_y = -3},
     {.bitmap_index = 3365, .adv_w = 95, .box_w = 5, .box_h = 14, .ofs_x = 0, .ofs_y = -3},
-    {.bitmap_index = 3400, .adv_w = 148, .box_w = 8, .box_h = 4, .ofs_x = 1, .ofs_y = 2}
+    {.bitmap_index = 3400, .adv_w = 148, .box_w = 8, .box_h = 4, .ofs_x = 1, .ofs_y = 2},
+    {.bitmap_index = 3416, .adv_w = 102, .box_w = 6, .box_h = 6, .ofs_x = 0, .ofs_y = 5}
 };
 
 /*---------------------
@@ -796,6 +802,10 @@ static const lv_font_fmt_txt_cmap_t cmaps[] =
 {
     {
         .range_start = 32, .range_length = 95, .glyph_id_start = 1,
+        .unicode_list = NULL, .glyph_id_ofs_list = NULL, .list_length = 0, .type = LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY
+    },
+    {
+        .range_start = 176, .range_length = 1, .glyph_id_start = 96,
         .unicode_list = NULL, .glyph_id_ofs_list = NULL, .list_length = 0, .type = LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY
     }
 };
@@ -819,7 +829,8 @@ static const uint8_t kern_left_class_mapping[] =
     19, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 4
+    0, 0, 0, 0, 0, 0, 0, 4,
+    3
 };
 
 /*Map glyph_ids to kern right classes*/
@@ -836,7 +847,8 @@ static const uint8_t kern_right_class_mapping[] =
     23, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 24, 0, 5
+    0, 0, 0, 0, 0, 24, 0, 5,
+    4
 };
 
 /*Kern values between classes*/
@@ -931,7 +943,7 @@ static lv_font_fmt_txt_dsc_t font_dsc = {
     .cmaps = cmaps,
     .kern_dsc = &kern_classes,
     .kern_scale = 16,
-    .cmap_num = 1,
+    .cmap_num = 2,
     .bpp = 4,
     .kern_classes = 1,
     .bitmap_format = 0,

@@ -32,7 +32,11 @@
 
 // CoinGecko simple/price. Free tier, no API key.
 #define CRYPTO_HOST "api.coingecko.com"
+// The id CoinGecko knows the coin by, and the name the screen puts at the top.
+// Next to each other so changing the tracked coin cannot leave the title
+// naming the old one.
 #define CRYPTO_COIN_ID "bitcoin"
+#define CRYPTO_COIN_NAME "Bitcoin"
 #define CRYPTO_PATH                                            \
   "/api/v3/simple/price?ids=" CRYPTO_COIN_ID                   \
   "&vs_currencies=usd&include_24hr_change=true"

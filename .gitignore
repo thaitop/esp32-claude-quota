@@ -1,5 +1,7 @@
 firmware/.pio/
 firmware/src/secrets.h
+bridge/history.log
+__pycache__/
 tools/.venv/
 sim/build/
 .DS_Store

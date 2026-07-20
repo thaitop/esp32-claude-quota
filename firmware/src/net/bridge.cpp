@@ -7,6 +7,7 @@
 
 #include "../config.h"
 #include "../secrets.h"
+#include "poller.h"
 
 namespace net {
 namespace {
@@ -31,6 +32,13 @@ void clearQuota(QuotaSnapshot &quota) {
   quota.session = QuotaWindow{};
   quota.weekly = QuotaWindow{};
 }
+
+// History runs on its own timer inside the Bridge Feed's slot. Kept here
+// rather than in the poller so there is still exactly one request in flight at
+// a time: this only ever runs after the quota fetch has already finished.
+uint32_t historyDueAtMs = 0;
+uint16_t historyFailures = 0;
+uint32_t historyRefreshSeen = 0;
 
 }  // namespace
 
@@ -96,6 +104,84 @@ FetchOutcome fetchQuota(AppModel &model) {
   }
 
   return FetchOutcome::Ok;
+}
+
+FetchOutcome fetchHistory(AppModel &model) {
+  if (WiFi.status() != WL_CONNECTED) return FetchOutcome::Offline;
+
+  HTTPClient http;
+  http.setTimeout(HTTP_TIMEOUT_MS);
+  http.setConnectTimeout(HTTP_TIMEOUT_MS);
+  http.setReuse(false);
+
+  const String url = String(BRIDGE_BASE_URL) + BRIDGE_PATH_HISTORY;
+  if (!http.begin(url)) return FetchOutcome::Unreachable;
+
+  const int status = http.GET();
+  if (status != HTTP_CODE_OK) {
+    http.end();
+    return status < 0 ? FetchOutcome::Unreachable : FetchOutcome::Rejected;
+  }
+
+  JsonDocument doc;
+  const DeserializationError error = deserializeJson(doc, http.getStream());
+  http.end();
+
+  if (error) return FetchOutcome::Malformed;
+
+  JsonArrayConst samples = doc["samples"];
+  if (samples.isNull()) return FetchOutcome::Malformed;
+
+  // Built into a local and copied over only once it has parsed. A partial
+  // write into the model would leave the chart drawing half of the new week
+  // and half of the old one, which reads as a real trend.
+  HistorySnapshot fetched;
+  for (JsonObjectConst sample : samples) {
+    if (fetched.count >= HISTORY_CAPACITY) break;
+    Sample &slot = fetched.samples[fetched.count];
+    slot.recordedAt = sample["recordedAt"] | 0UL;
+    slot.sessionUtilization = readUtilization(sample["session"]);
+    slot.weeklyUtilization = readUtilization(sample["weekly"]);
+    fetched.count++;
+  }
+
+  // An empty history is a successful fetch of a bridge that has not recorded
+  // anything yet -- the first days after setup. The Weekly screen says so
+  // rather than showing an empty plot, so trust follows the count.
+  fetched.trusted = fetched.count > 0;
+  model.history = fetched;
+  return FetchOutcome::Ok;
+}
+
+FetchOutcome fetchBridge(AppModel &model) {
+  const FetchOutcome quotaOutcome = fetchQuota(model);
+  if (quotaOutcome != FetchOutcome::Ok) return quotaOutcome;
+
+  const uint32_t now = millis();
+
+  // A manual refresh reaches the history too, even though the poller cannot
+  // see its timer. Tapping the Weekly screen and watching the chart sit there
+  // for ten minutes is the wait the gesture exists to skip.
+  const uint32_t generation = refreshGeneration();
+  const bool forced = generation != historyRefreshSeen;
+  historyRefreshSeen = generation;
+
+  if (!forced && (int32_t)(now - historyDueAtMs) < 0) return quotaOutcome;
+
+  const FetchOutcome historyOutcome = fetchHistory(model);
+  if (historyOutcome == FetchOutcome::Ok) {
+    historyFailures = 0;
+    historyDueAtMs = now + POLL_HISTORY_MS;
+  } else {
+    // The Samples already held stay held and stay trusted. A dropped poll is
+    // not evidence that the week that already happened did not happen, and
+    // blanking a chart on one unreachable fetch is the failure the Weekly
+    // screen is specifically required not to have.
+    if (historyFailures < 5) historyFailures++;
+    historyDueAtMs = now + (POLL_RETRY_MS << historyFailures);
+  }
+
+  return quotaOutcome;
 }
 
 }  // namespace net
