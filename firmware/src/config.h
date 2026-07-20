@@ -49,7 +49,7 @@
 // the round-robin scheduler honours, not guarantees.
 constexpr uint32_t POLL_QUOTA_MS = 20UL * 1000;         // LAN, free, no limits
 constexpr uint32_t POLL_HISTORY_MS = 10UL * 60 * 1000;  // changes slowly
-constexpr uint32_t POLL_WEATHER_MS = 10UL * 60 * 1000;  // Open-Meteo: 10k/day
+constexpr uint32_t POLL_WEATHER_MS = 5UL * 60 * 1000;   // Open-Meteo: 10k/day
 constexpr uint32_t POLL_CRYPTO_MS = 60UL * 1000;        // CoinGecko free tier
 constexpr uint32_t POLL_RETRY_MS = 5UL * 1000;
 
