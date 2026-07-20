@@ -7,9 +7,8 @@
 extern "C" {
 #endif
 
-LV_FONT_DECLARE(font_inter_36);
+LV_FONT_DECLARE(font_inter_36_bold);
 LV_FONT_DECLARE(font_inter_30_bold);
-LV_FONT_DECLARE(font_inter_27);
 LV_FONT_DECLARE(font_inter_22_bold);
 LV_FONT_DECLARE(font_inter_17);
 LV_FONT_DECLARE(font_inter_15);

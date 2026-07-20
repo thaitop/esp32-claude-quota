@@ -50,10 +50,21 @@ BPP = 4
 REGULAR = 400
 BOLD = 700
 
+# Every screen's hero figure is bold. It was Regular at 36 on Weather and
+# Crypto and Bold at 30 on Claude and Weekly, which read as two products rather
+# than as four screens: the figure is the one thing each screen exists to show,
+# and the weight is what says so. Bold at 36 rather than reusing the 30 the
+# other two carry, because dropping the price and the temperature six pixels to
+# gain the weight trades away the readability that made them 36 in the first
+# place.
+#
+# font_inter_27 is gone with it. It was the screen titles until those moved to
+# 22 Bold, and nothing has referenced it since -- 91KB of source for a face no
+# screen names.
 FACES = [
-    ("font_inter_36", 36, REGULAR),        # the big figure on Weather and Crypto
-    ("font_inter_30_bold", 30, BOLD),      # the Claude percentages
-    ("font_inter_27", 27, REGULAR),        # screen titles
+    ("font_inter_36_bold", 36, BOLD),      # the hero figure on every screen but
+                                           # Claude and Weekly, which are 30
+    ("font_inter_30_bold", 30, BOLD),      # the Claude and Weekly percentages
     ("font_inter_22_bold", 22, BOLD),      # "Usage" in the Claude header
     ("font_inter_17", 17, REGULAR),        # body copy
     ("font_inter_15", 15, REGULAR),        # pill badges, status word

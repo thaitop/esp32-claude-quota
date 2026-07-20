@@ -149,7 +149,7 @@ void buildWeatherScreen(lv_obj_t *parent) {
 
   hero = makeCard(parent, PAD, HERO_Y, HERO_W, HERO_H);
 
-  reading = makeLabel(hero, &font_inter_36, theme::TEXT);
+  reading = makeLabel(hero, &font_inter_36_bold, theme::TEXT);
   lv_label_set_text(reading, format::UNKNOWN);
   lv_obj_set_pos(reading, HERO_PAD, TEMP_Y);
 
