@@ -178,6 +178,12 @@ struct AppModel {
   // read from WiFi.h where it is shown, so the ui layer stays ignorant of the
   // radio for the same reason it stays ignorant of HTTP -- and so the Setting
   // screen can be compiled and exercised on the host like every other one.
+  // Local wall clock as "HH:MM", empty until NTP has set the RTC. A rendered
+  // string rather than a time_t for the same reason the rest of this header
+  // carries no library types: the ui layer reads it and must not have to know
+  // about <time.h>, a zone or a format.
+  char wallClock[6] = {0};
+
   bool wifiAssociated = false;
   int32_t rssi = 0;
   char ipAddress[16] = {0};   // dotted quad, empty until associated

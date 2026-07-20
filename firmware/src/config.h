@@ -51,6 +51,22 @@
   "&include_24hr_vol=true"
 
 // ---------------------------------------------------------------------------
+// Clock
+// ---------------------------------------------------------------------------
+
+#define NTP_SERVER "time.google.com"
+
+// POSIX TZ strings spell the offset backwards -- "ICT-7" is UTC+7, not UTC-7.
+// No DST rule, because Thailand has none; a zone that does needs the summer
+// abbreviation and the switch dates appended here.
+#define CLOCK_TZ "ICT-7"
+
+// How long the one boot-time sync waits for the first packet. The header shows
+// minutes, so a clock that never arrives costs a blank corner and nothing else
+// -- which is why this blocks once at boot rather than becoming a fourth feed.
+constexpr uint32_t NTP_WAIT_MS = 5000;
+
+// ---------------------------------------------------------------------------
 // Polling
 // ---------------------------------------------------------------------------
 

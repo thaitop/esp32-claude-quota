@@ -17,6 +17,7 @@
 #include "net/bridge.h"
 #include "net/crypto.h"
 #include "net/poller.h"
+#include "net/timesync.h"
 #include "net/weather.h"
 #include "secrets.h"
 #include "ui/nav.h"
@@ -160,6 +161,11 @@ void setup() {
 
   connectWifi();
 
+  // Before the feeds, and blocking, because it is one packet and the header is
+  // already on screen with a hole where the time goes.
+  net::syncClock();
+  net::readClock(model);
+
   // Registration order does not set priority -- the poller picks whichever
   // Feed is most overdue -- but it does set which one goes first at boot,
   // since they all come due at once and the quota is what the display is for.
@@ -200,6 +206,13 @@ void loop() {
   if (associated != model.wifiAssociated) {
     recordLink();
     if (!associated) WiFi.reconnect();
+    // The boot sync runs whether or not the radio made it up in twenty
+    // seconds, so an association arriving later is the second and last chance
+    // the clock gets. A no-op once synced.
+    if (associated && !net::clockSynced()) {
+      net::syncClock();
+      net::readClock(model);
+    }
     refreshActiveScreen(now);
   }
 
@@ -230,6 +243,7 @@ void loop() {
   if (now - lastSecond >= 1000) {
     lastSecond = now;
     recordLink();
+    net::readClock(model);
     if (model.quota.session.secondsToReset > 0) model.quota.session.secondsToReset--;
     if (model.quota.weekly.secondsToReset > 0) model.quota.weekly.secondsToReset--;
     refreshActiveScreen(now);

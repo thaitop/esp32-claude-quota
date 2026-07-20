@@ -64,7 +64,11 @@ struct CardWidgets {
 CardWidgets cards[2];
 lv_obj_t *statusDot = nullptr;
 lv_obj_t *wifiGlyph = nullptr;
+lv_obj_t *headerClock = nullptr;
 int shownStatus = -1;
+// Neither a real time nor the empty string an unsynced clock renders as, so
+// the first update always draws.
+char shownClock[6] = "-";
 
 void buildHeader(lv_obj_t *parent) {
   lv_obj_t *mascot = lv_image_create(parent);
@@ -78,6 +82,17 @@ void buildHeader(lv_obj_t *parent) {
   lv_obj_t *title = makeLabel(parent, &font_inter_22_bold, theme::TEXT);
   lv_label_set_text(title, "Usage");
   lv_obj_set_pos(title, 46, 4);
+
+  // The wall clock, right-aligned rather than positioned from the left: "09:05"
+  // and "23:59" are not the same width in a proportional face, and a
+  // left-anchored label would walk the gap to the wifi glyph about as the hour
+  // changed. Its right edge lands at 262, eight clear of the glyph at 270.
+  // Muted, because the header's job is the title and the state -- the time is
+  // there to be glanced at, not read.
+  // y=8 centres its 19px line box on the glyph's midline at 17.
+  headerClock = makeLabel(parent, &font_inter_15, theme::MUTED);
+  lv_label_set_text(headerClock, "");
+  lv_obj_align(headerClock, LV_ALIGN_TOP_RIGHT, -58, 8);
 
   wifiGlyph = lv_image_create(parent);
   lv_image_set_src(wifiGlyph, &glyph_wifi);
@@ -174,6 +189,13 @@ void updateCard(CardWidgets &card, const QuotaWindow &window) {
   }
 }
 
+void updateClock(const AppModel &model) {
+  if (strcmp(model.wallClock, shownClock) == 0) return;
+  strncpy(shownClock, model.wallClock, sizeof(shownClock) - 1);
+  shownClock[sizeof(shownClock) - 1] = '\0';
+  lv_label_set_text(headerClock, shownClock);
+}
+
 void updateStatus(const AppModel &model) {
   const bool online = model.wifiAssociated && model.quota.trusted;
   const int status = (model.wifiAssociated ? 1 : 0) + (model.quota.trusted ? 2 : 0);
@@ -216,6 +238,7 @@ void buildClaudeScreen(lv_obj_t *parent) {
 
 void updateClaudeScreen(const AppModel &model) {
   updateStatus(model);
+  updateClock(model);
   updateCard(cards[0], model.quota.session);
   updateCard(cards[1], model.quota.weekly);
 }
