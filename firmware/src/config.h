@@ -28,7 +28,7 @@
 #define WEATHER_PATH_FMT                                                    \
   "/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,"       \
   "apparent_temperature,relative_humidity_2m,is_day,weather_code&timezone=" \
-  "Asia/Bangkok"
+  WEATHER_TZ
 
 // CoinGecko simple/price. Free tier, no API key.
 #define CRYPTO_HOST "api.coingecko.com"
@@ -75,10 +75,9 @@ constexpr int MARKET_CLOSE_MINUTE = 16 * 60;      // 16:00 ET
 
 #define NTP_SERVER "time.google.com"
 
-// POSIX TZ strings spell the offset backwards -- "ICT-7" is UTC+7, not UTC-7.
-// No DST rule, because Thailand has none; a zone that does needs the summer
-// abbreviation and the switch dates appended here.
-#define CLOCK_TZ "ICT-7"
+// CLOCK_TZ (the POSIX TZ string) lives in secrets.h alongside WEATHER_TZ and the
+// coordinates, since it describes where the display sits, not repo-wide
+// behaviour. timesync.cpp reads it from there.
 
 // How long the one boot-time sync waits for the first packet. The header shows
 // minutes, so a clock that never arrives costs a blank corner and nothing else

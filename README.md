@@ -49,6 +49,8 @@ Edit `firmware/src/secrets.h`:
 #define BRIDGE_BASE_URL "http://192.168.1.117:8787"   // the LAN IP of the Claude Code machine
 #define WEATHER_LATITUDE  13.75f
 #define WEATHER_LONGITUDE 100.50f
+#define WEATHER_TZ "Asia/Bangkok"           // IANA zone name — Open-Meteo takes nothing else
+#define CLOCK_TZ   "UTC+7"                   // header clock offset, written the way you say it
 #define FINNHUB_TOKEN "your-finnhub-token"  // free key from finnhub.io/register — Stock screen only
 ```
 
@@ -66,16 +68,20 @@ from DHCP, give the machine a reservation so the firmware does not need
 reflashing when the lease changes.
 
 `secrets.h` is gitignored. Everything else — poll intervals, timeouts, the
-tracked coins and stock tickers, the timezone, colour thresholds, touch
-calibration — is in `firmware/src/config.h`, which is committed. (The stock
-symbols themselves are a table in `model.cpp`; the market-hours window is in
-`config.h`.)
+tracked coins and stock tickers, colour thresholds, touch calibration — is in
+`firmware/src/config.h`, which is committed. (The stock symbols themselves are a
+table in `model.cpp`; the market-hours window is in `config.h`.)
 
-The timezone is a POSIX TZ string and defaults to Bangkok:
-
-```c
-#define CLOCK_TZ "ICT-7"   // note the sign is backwards: -7 means UTC+7
-```
+The timezone lives in `secrets.h` alongside the coordinates, because it
+describes where the display sits rather than repo-wide behaviour. Two values:
+`WEATHER_TZ` is the IANA zone name sent to Open-Meteo (city names only — it does
+not take a bare offset), and `CLOCK_TZ` is the header clock's offset written the
+way a person says it — `"UTC+7"`, `"UTC-5"`, `"UTC+5:30"`, or plain `"UTC"`. The
+firmware parses that into the POSIX TZ string libc wants, so you never touch
+POSIX's backwards sign convention. Whole- and half-hour offsets, no DST (fine
+for Thailand); a summer-time zone needs a raw POSIX string like
+`"EST5EDT,M3.2.0,M11.1.0"`, which is passed through untouched when it carries no
+`UTC`/`GMT` prefix.
 
 ### 2. Flash
 
