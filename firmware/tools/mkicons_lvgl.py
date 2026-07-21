@@ -82,6 +82,11 @@ MANIFEST = [
     # recolor is ever dropped.
     ("glyph_clock",      "lucide/clock.svg",         14, 14, TEXT,   "stroke"),
     ("glyph_wifi",       "lucide/wifi.svg",          22, 16, TEXT,   "stroke"),
+    # Weaker-signal variants of the wifi glyph, swapped in by RSSI. Recoloured
+    # at runtime like glyph_wifi, so the baked colour is only a fallback.
+    ("glyph_wifi_high",  "lucide/wifi-high.svg",     22, 16, TEXT,   "stroke"),
+    ("glyph_wifi_low",   "lucide/wifi-low.svg",      22, 16, TEXT,   "stroke"),
+    ("glyph_wifi_off",   "lucide/wifi-off.svg",      22, 16, TEXT,   "stroke"),
     ("glyph_brightness", "lucide/sun.svg",           16, 16, TEXT,   "stroke"),
 
     ("wx_clear_day",    "lucide/sun.svg",            48, 48, AMBER,  "stroke"),

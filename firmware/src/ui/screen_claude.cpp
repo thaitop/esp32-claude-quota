@@ -76,6 +76,7 @@ lv_obj_t *statusDot = nullptr;
 lv_obj_t *wifiGlyph = nullptr;
 lv_obj_t *headerClock = nullptr;
 int shownStatus = -1;
+int shownBars = -1;
 // Neither a real time nor the empty string an unsynced clock renders as, so
 // the first update always draws.
 char shownClock[6] = "-";
@@ -249,11 +250,34 @@ void updateClock(const AppModel &model) {
   lv_label_set_text(headerClock, shownClock);
 }
 
+// The wifi glyph as signal bars: full/high/low by RSSI while associated, the
+// crossed-out glyph when the radio is not on the network at all. RSSI is dBm,
+// so less negative is stronger; the -60/-70 thresholds are the usual "strong /
+// ok / weak" bands and the 10dBm gaps keep a hovering signal from flickering
+// between glyphs every second.
+int wifiBars(const AppModel &model) {
+  if (!model.wifiAssociated) return 0;  // off
+  if (model.rssi >= -60) return 3;      // full
+  if (model.rssi >= -70) return 2;      // high
+  return 1;                             // low
+}
+
+const lv_image_dsc_t *wifiGlyphFor(int bars) {
+  switch (bars) {
+  case 3:  return &glyph_wifi;
+  case 2:  return &glyph_wifi_high;
+  case 1:  return &glyph_wifi_low;
+  default: return &glyph_wifi_off;
+  }
+}
+
 void updateStatus(const AppModel &model) {
   const bool online = model.wifiAssociated && model.quota.trusted;
   const int status = (model.wifiAssociated ? 1 : 0) + (model.quota.trusted ? 2 : 0);
-  if (status == shownStatus) return;
+  const int bars = wifiBars(model);
+  if (status == shownStatus && bars == shownBars) return;
   shownStatus = status;
+  shownBars = bars;
 
   // Green associated and fed, amber associated but the bridge is quiet, red off
   // the network entirely.
@@ -261,6 +285,7 @@ void updateStatus(const AppModel &model) {
       online ? theme::GREEN : (model.wifiAssociated ? theme::AMBER : theme::RED);
 
   lv_obj_set_style_bg_color(statusDot, theme::colour(tint), LV_PART_MAIN);
+  lv_image_set_src(wifiGlyph, wifiGlyphFor(bars));
   lv_obj_set_style_image_recolor(
       wifiGlyph, theme::colour(model.wifiAssociated ? theme::TEXT : theme::NAV_EDGE),
       LV_PART_MAIN);
