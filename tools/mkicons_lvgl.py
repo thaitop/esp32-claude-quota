@@ -70,6 +70,11 @@ C_WEATHER_SUN = "#FFB020"
 C_WEATHER_FG = "#3CB4FF"
 C_CRYPTO_BG = "#2A2404"
 C_CRYPTO_FG = "#FFD400"
+# Stock: a rising line, green the way the screen tints an up day. Dark green
+# ground rather than crypto's near-black, so the two finance tiles sit apart in
+# the row instead of reading as one.
+C_STOCK_BG = "#0E2A12"
+C_STOCK_FG = "#7FD93C"
 C_SETTING_BG = "#2C2C30"
 C_SETTING_FG = "#B4B4BA"
 C_MASCOT_TOP = (0xF0, 0x4A, 0x2A)
@@ -165,6 +170,24 @@ def icon_crypto(size: int = TILE) -> Image.Image:
     for x in (10.6, 14.6):
         draw.rectangle([x * s, 3.6 * s, (x + 1.8) * s, 7.5 * s], fill=C_CRYPTO_FG)
         draw.rectangle([x * s, 20.5 * s, (x + 1.8) * s, 24.4 * s], fill=C_CRYPTO_FG)
+    return finish(img, size, size)
+
+
+def icon_stock(size: int = TILE) -> Image.Image:
+    img, draw = tile_base(C_STOCK_BG, size)
+    s = unit(size)
+    w = max(1, int(2.4 * s))
+    # A four-point zigzag trending up-right -- a price line, not a bar chart,
+    # so it does not read as the Weekly screen's tile in a different colour.
+    # "curve" joints round the corners the way a smoothed line would, which
+    # survives the resample better than mitred ones.
+    pts = [(4.5, 20), (10, 15.5), (15, 18), (22.5, 8)]
+    draw.line([(x * s, y * s) for x, y in pts], fill=C_STOCK_FG, width=w, joint="curve")
+    # Arrowhead at the tip: one barb left, one barb down, which is the corner an
+    # up-right arrow reduces to at this size. A filled triangle turns to a blob.
+    tx, ty = 22.5 * s, 8 * s
+    draw.line([(tx, ty), (17 * s, 8 * s)], fill=C_STOCK_FG, width=w)
+    draw.line([(tx, ty), (22.5 * s, 13.5 * s)], fill=C_STOCK_FG, width=w)
     return finish(img, size, size)
 
 
@@ -590,6 +613,7 @@ IMAGES = [
     ("icon_weekly", icon_weekly),
     ("icon_weather", icon_weather),
     ("icon_crypto", icon_crypto),
+    ("icon_stock", icon_stock),
     ("icon_setting", icon_setting),
     ("img_mascot", icon_mascot),
     ("glyph_clock", icon_clock),
@@ -614,6 +638,7 @@ IMAGES = [
     ("icon_weekly_hdr", lambda: icon_weekly(HEADER)),
     ("icon_weather_hdr", lambda: icon_weather(HEADER)),
     ("icon_crypto_hdr", lambda: icon_crypto(HEADER)),
+    ("icon_stock_hdr", lambda: icon_stock(HEADER)),
     ("icon_setting_hdr", lambda: icon_setting(HEADER)),
     ("coin_btc_hdr", lambda: coin_btc(HEADER)),
     ("coin_eth_hdr", lambda: coin_eth(HEADER)),

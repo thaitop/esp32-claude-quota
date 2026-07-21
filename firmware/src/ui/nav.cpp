@@ -41,6 +41,7 @@ const lv_image_dsc_t *iconFor(int slot) {
     case 1: return &icon_weekly;
     case 2: return &icon_weather;
     case 3: return &icon_crypto;
+    case 4: return &icon_stock;
     default: return &icon_setting;
   }
 }

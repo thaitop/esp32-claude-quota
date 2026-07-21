@@ -22,6 +22,7 @@ enum class Feed : uint8_t {
   Bridge = 0,  // quota, via the Mac
   Weather,     // Open-Meteo, direct
   Crypto,      // CoinGecko, direct
+  Stock,       // Finnhub, direct, one symbol per pass
   Count,
 };
 
@@ -163,6 +164,60 @@ struct CryptoSnapshot {
 };
 
 // ---------------------------------------------------------------------------
+// Stocks
+// ---------------------------------------------------------------------------
+
+// The tickers the Stock screen tracks, in the order the list prints them. An
+// enum for the same reason Coin is one: the feed steps through them one symbol
+// per pass and the screen reads them by index, so a symbol added here appears
+// in the request and on the row without either being edited to match.
+enum class Ticker : uint8_t {
+  AAPL = 0,
+  NVDA,
+  TSLA,
+  GOOG,
+  MSFT,
+  Count,
+};
+
+// The symbol Finnhub knows a ticker by, which is also the label the row prints
+// -- for US equities the two are the same string, so one table serves both and
+// the request can never ask about one company while the row names another.
+const char *stockSymbol(Ticker ticker);
+
+// What Finnhub's /quote reports for one symbol, pared to what the row shows.
+// The change is the move against the previous close as a percentage, exactly
+// Finnhub's `dp` field -- not derived here, so ADR-0001's "reported, never
+// synthesized" holds the same way it does for the coins.
+struct StockQuote {
+  bool trusted = false;
+  float priceUsd = 0.0f;   // Finnhub `c`, the last trade
+  float changePct = 0.0f;  // Finnhub `dp`, percent against the previous close
+};
+
+// Whether the US regular session is open right now, derived from the clock and
+// never from a feed -- Finnhub's free /quote carries no session flag. Unknown
+// until NTP has set the RTC, because a badge that guesses "closed" while the
+// clock is blank is a claim the display cannot back. Holidays are not modelled;
+// the badge reads "open" on the ten-odd exchange holidays a year (ADR-0004).
+enum class MarketSession : uint8_t {
+  Unknown = 0,
+  Open,
+  Closed,
+};
+
+struct StockSnapshot {
+  // Per-symbol trust, like the coins: the feed fetches one symbol at a time, so
+  // a rejected or malformed reply blanks the one row it was for and leaves the
+  // four fetched moments earlier alone.
+  StockQuote quotes[(size_t)Ticker::Count];
+  MarketSession session = MarketSession::Unknown;
+
+  const StockQuote &quote(Ticker which) const { return quotes[(size_t)which]; }
+  StockQuote &quote(Ticker which) { return quotes[(size_t)which]; }
+};
+
+// ---------------------------------------------------------------------------
 // The whole displayable world
 // ---------------------------------------------------------------------------
 
@@ -171,6 +226,7 @@ struct AppModel {
   HistorySnapshot history;
   WeatherSnapshot weather;
   CryptoSnapshot crypto;
+  StockSnapshot stocks;
 
   FeedStatus feeds[(size_t)Feed::Count];
 
