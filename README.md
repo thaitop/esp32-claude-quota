@@ -36,7 +36,7 @@ No soldering, no extra parts. Everything else is on the board.
 ### 1. Clone and configure
 
 ```bash
-git clone <this-repo> esp32-claude-quota
+git clone https://github.com/thaitop/esp32-claude-quota.git
 cd esp32-claude-quota
 cp firmware/src/secrets.h.example firmware/src/secrets.h
 ```
@@ -79,38 +79,36 @@ The timezone is a POSIX TZ string and defaults to Bangkok:
 
 ### 2. Flash
 
-Plug the board in and:
+Plug the board in and flash. Redirect the upload to a file rather than
+piping it through `tail` or `grep`:
 
 ```bash
 cd firmware
-~/.local/bin/pio run --target upload
-~/.local/bin/pio device monitor
+~/.local/bin/pio run --target upload > /tmp/upload.log 2>&1; echo "exit=$?"
+grep -E "Hash of data|Hard resetting|SUCCESS|FAILED" /tmp/upload.log
 ```
+
+`pio` writes a couple of hundred lines and an agent shell — or any piped
+`tail` — truncates from the end, so it returns the *header* (the dependency
+graph and the memory table) and the `SUCCESS` line never arrives. That looks
+exactly like a flash that did not finish, and the obvious response is to run it
+again. The board takes fifty seconds a time and the second attempt reads no
+better than the first. The exit code and the log file settle it in one pass.
 
 First build downloads the ESP32 toolchain and four libraries — a few minutes.
 Later builds take about a minute, and the upload itself another fifty seconds.
 PlatformIO picks the serial port on its own; if two boards are attached, name
 one with `--upload-port /dev/cu.usbserial-XXXX`.
 
-Serial should show the WiFi join, then a fetch per feed. The display lights up
-at boot even before the network is up.
-
-**Redirect the upload to a file rather than piping it through `tail` or `grep`:**
+Then watch it come up:
 
 ```bash
-~/.local/bin/pio run --target upload > /tmp/upload.log 2>&1; echo "exit=$?"
-grep -E "Hash of data|Hard resetting|SUCCESS|FAILED" /tmp/upload.log
+~/.local/bin/pio device monitor
 ```
 
-`pio` writes a couple of hundred lines and an agent shell truncates from the
-end, so a piped `tail` returns the *header* — the dependency graph and the
-memory table — and the `SUCCESS` line never arrives. That looks exactly like a
-flash that did not finish, and the obvious response is to run it again. The
-board takes fifty seconds a time and the second attempt reads no better than the
-first. The exit code and the log file settle it in one pass.
-
-Weather and Crypto work as soon as the board has WiFi. The two Claude screens
-stay at `--` until the bridge is up.
+Serial should show the WiFi join, then a fetch per feed. The display lights up
+at boot even before the network is up. Weather and Crypto work as soon as the
+board has WiFi; the two Claude screens stay at `--` until the bridge is up.
 
 ### 3. Set up the quota source
 
