@@ -4,9 +4,18 @@
   <b>🇬🇧 English</b> &nbsp;·&nbsp; <a href="README.th.md">🇹🇭 ภาษาไทย</a>
 </p>
 
+<p align="center"><b>💸 Zero Claude tokens — watching your quota never spends it.</b></p>
+
 A desk display for Claude Code's two usage windows, plus weather, crypto and
 stocks, running on the "Cheap Yellow Display" (ESP32-WROOM-32 + 2.8" 240x320
 ILI9341 + XPT2046 resistive touch), drawn with LVGL 9.
+
+> **The numbers cost nothing to read.** They come from the same read-only
+> endpoint the claude.ai web app uses to draw its own usage meter — no prompt,
+> no model call, no hit to your rate-limit windows. The display can only ever
+> *report* the quota; it never spends it. That is deliberate: asking Claude "how
+> much have I used?" would cost a message and inflate the very numbers you are
+> trying to watch ([how it works](#how-it-gets-the-numbers)).
 
 | Screen | Shows | Feed |
 |---|---|---|
@@ -16,9 +25,6 @@ ILI9341 + XPT2046 resistive touch), drawn with LVGL 9.
 | **Crypto** | One coin's price, 24h change, dollar move and volume; BTC/ETH/BNB | Crypto |
 | **Stock** | Five tickers as a list, with a market-open badge | Stock |
 | **Setting** | Link, per-feed health, quota staleness, heap, uptime, backlight | — |
-
-[CONTEXT.md](CONTEXT.md) defines the shared vocabulary. The [ADRs](docs/adr/)
-record the four decisions that constrain the rest.
 
 ## The screens
 
@@ -39,7 +45,7 @@ record the four decisions that constrain the rest.
 
 | Item | Notes |
 |---|---|
-| **ESP32-2432S028R** board | The 2.8" single-USB "CYD". ~$10. |
+| **ESP32-2432S028R** board | The 2.8" single-USB "CYD". ~$10. [Buy on Shopee (TH)](https://s.shopee.co.th/9fJTGEoal1). |
 | **USB cable** | Micro-USB **data** cable — a charge-only one looks like a dead board. |
 | **A computer running Claude Code** | Source of the quota numbers. Stays awake, same LAN as the display. macOS below; the bridge is plain Python 3.11+. |
 | **A claude.ai session key** | Pasted into a file during setup (step 3). |
@@ -76,8 +82,8 @@ placeholder just shows `--` on the Stock screen. Get the machine's IP with
 
 `secrets.h` is gitignored. Everything else — poll intervals, timeouts, coins,
 tickers, colour thresholds, touch calibration — lives in the committed
-`firmware/src/config.h`. Why the token and TZ sit in `secrets.h` is
-[ADR-0004](docs/adr/0004-stock-feed-soft-credential.md).
+`firmware/src/config.h`. The token and TZ sit in `secrets.h` because the token
+is a credential, soft as it is.
 
 ## 2. Flash
 
@@ -224,6 +230,10 @@ GET https://claude.ai/api/organizations/<org-id>/usage
 Cookie: sessionKey=<session-key>
 ```
 
+It just returns the numbers already on your account — no prompt, no model call,
+so reading it burns **zero Claude tokens** and never touches your rate-limit
+windows (the reason this reads the endpoint instead of asking Claude, above).
+
 Two processes, deliberately. `fetch_usage.py` holds the credential, calls that
 on a 60s timer, and writes a small KEY=VALUE file:
 
@@ -243,14 +253,12 @@ the LAN-facing process.
 If the cache is missing or older than 30 minutes the bridge reports
 `"trusted": false` and every quota figure becomes `--`. It never synthesizes a
 percentage from token counts — that would be a guess wearing the costume of a
-fact ([ADR-0001](docs/adr/0001-never-derive-utilization-from-tokens.md)).
+fact.
 
 Weather, crypto and stocks are fetched **directly by the device**, so a sleeping
-Mac costs only the two Claude screens
-([ADR-0002](docs/adr/0002-mixed-feed-topology.md)). One request is in flight at
-a time, ever — a TLS handshake peaks near 45KB and two overlapping do not fit
-beside the draw buffers
-([ADR-0003](docs/adr/0003-partial-draw-buffer-and-serial-polling.md)).
+Mac costs only the two Claude screens. One request is in flight at a time, ever
+— a TLS handshake peaks near 45KB and two overlapping do not fit beside the draw
+buffers.
 
 | Feed | Interval |
 |---|---|
@@ -315,8 +323,7 @@ stepper). Changing configuration means reflashing.
   give away as a board you gave your WiFi password to.
 - The bridge serves on the LAN with no auth (percentages and optional token
   counts, no credentials). Bind it to a trusted network; do not port-forward.
-- Weather and crypto skip certificate validation deliberately
-  ([ADR-0002](docs/adr/0002-mixed-feed-topology.md)); neither carries a
+- Weather and crypto skip certificate validation deliberately; neither carries a
   credential.
 - `/api/organizations/<id>/usage` is undocumented and can change without
   notice. When it breaks, the display shows `--` rather than a stale number.
