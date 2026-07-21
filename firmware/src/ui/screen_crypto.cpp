@@ -21,13 +21,13 @@ namespace {
 // It shows one coin at a time and a toggle at the top right steps between them.
 // Three coins at once was the first plan and it does not survive the arithmetic:
 // each coin owes a price, a percentage, a dollar move and a day's volume, and
-// 194 pixels of page split three ways is 64 apiece -- a band shorter than the
+// 202 pixels of page split three ways is 67 apiece -- a band shorter than the
 // Weather screen's stat tiles, for four figures rather than one. Toggling costs
 // a tap and keeps every figure at a size that can be read across a desk.
 constexpr int16_t PAD = 8;
-constexpr int16_t HERO_Y = 36;
+constexpr int16_t HERO_Y = 34;
 constexpr int16_t HERO_W = display::WIDTH - 2 * PAD;
-constexpr int16_t HERO_H = 90;
+constexpr int16_t HERO_H = 94;
 constexpr int16_t HERO_PAD = 10;
 
 // The price leads and the coin mark answers it, the same way round as the
@@ -67,11 +67,11 @@ constexpr int16_t HIT_W = SEG_W + 2 * SEG_GAP;
 constexpr int16_t HIT_H = 34;
 
 // Same geometry as the Weekly and Weather strips, to the pixel.
-constexpr int16_t TILE_Y = 130;
-constexpr int16_t TILE_H = 42;
+constexpr int16_t TILE_Y = 132;
+constexpr int16_t TILE_H = 46;
 constexpr int16_t TILE_GAP = 8;
 constexpr int16_t TILE_W = (HERO_W - 2 * TILE_GAP) / 3;
-constexpr int16_t FOOT_Y = 176;
+constexpr int16_t FOOT_Y = 182;
 
 struct Tile {
   lv_obj_t *value = nullptr;

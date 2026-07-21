@@ -24,9 +24,9 @@ namespace {
 // product, and "Feels like" and "Humidity" become figures the eye can compare
 // rather than prose it has to read.
 constexpr int16_t PAD = 8;
-constexpr int16_t HERO_Y = 36;
+constexpr int16_t HERO_Y = 34;
 constexpr int16_t HERO_W = display::WIDTH - 2 * PAD;
-constexpr int16_t HERO_H = 90;
+constexpr int16_t HERO_H = 94;
 constexpr int16_t HERO_PAD = 10;
 
 // The reading leads and the glyph answers it. Reversed from the first pass,
@@ -44,11 +44,11 @@ constexpr int16_t GLYPH_Y = (HERO_H - GLYPH) / 2;
 
 // Same geometry as the Weekly screen's strip, to the pixel. Two rows of tiles
 // that differ by a few pixels between screens read as two grids.
-constexpr int16_t TILE_Y = 130;
-constexpr int16_t TILE_H = 42;
+constexpr int16_t TILE_Y = 132;
+constexpr int16_t TILE_H = 46;
 constexpr int16_t TILE_GAP = 8;
 constexpr int16_t TILE_W = (HERO_W - 2 * TILE_GAP) / 3;
-constexpr int16_t FOOT_Y = 176;
+constexpr int16_t FOOT_Y = 182;
 
 struct Tile {
   lv_obj_t *value = nullptr;

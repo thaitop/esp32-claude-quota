@@ -19,9 +19,10 @@ constexpr int16_t HEADER_H = 34;
 constexpr int16_t CARD_X = 8;
 constexpr int16_t CARD_W = display::WIDTH - 2 * CARD_X;
 constexpr int16_t CARD_H = 76;
-// Shifted up two pixels from the first pass to make room for the taller
-// navbar the 34px tiles need.
-constexpr int16_t CARD_Y[2] = {36, 114};
+// The slimmer 36px navbar (28px tiles) freed height at the bottom; the second
+// card drops to sit just clear of it, opening the gap between the two cards
+// rather than growing either card and unbalancing its interior.
+constexpr int16_t CARD_Y[2] = {36, 122};
 
 // The vertical stack inside a 76px card, with the real font metrics rather
 // than round numbers: Inter 30 Bold sets a 37px line on a 7px descent, Inter 12

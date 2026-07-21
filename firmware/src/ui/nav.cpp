@@ -13,7 +13,7 @@ constexpr int16_t NAV_X = 8;
 constexpr int16_t NAV_W = display::WIDTH - 2 * NAV_X;
 constexpr int16_t NAV_Y = display::HEIGHT - NAV_VISUAL_H - 2;
 constexpr int16_t SLOT_W = NAV_W / SLOTS;
-constexpr int16_t ICON = 34;
+constexpr int16_t ICON = 28;
 constexpr int16_t MARK_W = 26;
 constexpr int16_t MARK_H = 2;
 

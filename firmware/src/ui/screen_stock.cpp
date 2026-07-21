@@ -14,8 +14,8 @@ namespace ui {
 namespace {
 
 // Five rows down the page, each a card the same fill and edge every other
-// screen's cards wear. The title band keeps its 36px; what is left, 158px,
-// splits into five 28px rows on a 32px pitch and lands one clear of the navbar.
+// screen's cards wear. The title band trims to 34px; what is left, 168px,
+// splits into five 28px rows on a 34px pitch and lands a few clear of the navbar.
 //
 // One coin gets a hero and three tiles because a screen showing one thing can
 // spend the whole page on it. Five symbols cannot each have that, and a glance
@@ -23,9 +23,9 @@ namespace {
 // -- so each keeps the three figures that fit on a line: the symbol, the price,
 // and the day's move, coloured by its sign.
 constexpr int16_t PAD = 8;
-constexpr int16_t ROW_Y0 = 36;
+constexpr int16_t ROW_Y0 = 34;
 constexpr int16_t ROW_H = 28;
-constexpr int16_t ROW_PITCH = 32;  // ROW_H plus a 4px gap
+constexpr int16_t ROW_PITCH = 34;  // ROW_H plus a 6px gap
 constexpr int16_t ROW_W = display::WIDTH - 2 * PAD;
 
 // Inside a row: the symbol reads from the left margin every card uses, the

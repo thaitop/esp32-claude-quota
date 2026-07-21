@@ -21,9 +21,9 @@ namespace {
 // the eye was trying to measure, and the curve goes back to doing the one job
 // it is good at.
 constexpr int16_t PAD = 8;
-constexpr int16_t HERO_Y = 36;
+constexpr int16_t HERO_Y = 34;
 constexpr int16_t HERO_W = display::WIDTH - 2 * PAD;
-constexpr int16_t HERO_H = 90;
+constexpr int16_t HERO_H = 94;
 
 // The figure's column. "100%" at Inter 30 Bold measures 74px, so 86 of column
 // clears it with room to breathe and leaves the curve the remaining two
@@ -43,11 +43,11 @@ constexpr int16_t CHART_H = 70;
 constexpr int16_t CHART_PAD = 4;
 constexpr int16_t DOT = 7;
 
-constexpr int16_t TILE_Y = 130;
-constexpr int16_t TILE_H = 42;
+constexpr int16_t TILE_Y = 132;
+constexpr int16_t TILE_H = 46;
 constexpr int16_t TILE_GAP = 8;
 constexpr int16_t TILE_W = (HERO_W - 2 * TILE_GAP) / 3;
-constexpr int16_t FOOT_Y = 176;
+constexpr int16_t FOOT_Y = 182;
 
 // A single Sample is a dot, not a trend. Below this the screen says so rather
 // than drawing a nearly empty plot that looks like a broken chart.

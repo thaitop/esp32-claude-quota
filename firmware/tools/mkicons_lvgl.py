@@ -63,12 +63,12 @@ BTC, ETH, BNB = "#F7931A", "#627EEA", "#F3BA2F"
 # here; it is defined in ui_icons_static.c.
 MANIFEST = [
     # name,              src,                         w,  h,  colour, kind
-    ("icon_claude",   "custom/anthropic.svg",        34, 34, ACCENT, "stroke"),
-    ("icon_weekly",   "lucide/calendar-days.svg",    34, 34, TEXT,   "stroke"),
-    ("icon_weather",  "lucide/cloud-sun.svg",        34, 34, TEXT,   "stroke"),
-    ("icon_crypto",   "lucide/coins.svg",            34, 34, TEXT,   "stroke"),
-    ("icon_stock",    "lucide/trending-up.svg",      34, 34, TEXT,   "stroke"),
-    ("icon_setting",  "lucide/settings.svg",         34, 34, TEXT,   "stroke"),
+    ("icon_claude",   "custom/anthropic.svg",        28, 28, ACCENT, "stroke"),
+    ("icon_weekly",   "lucide/calendar-days.svg",    28, 28, TEXT,   "stroke"),
+    ("icon_weather",  "lucide/cloud-sun.svg",        28, 28, TEXT,   "stroke"),
+    ("icon_crypto",   "lucide/coins.svg",            28, 28, TEXT,   "stroke"),
+    ("icon_stock",    "lucide/trending-up.svg",      28, 28, TEXT,   "stroke"),
+    ("icon_setting",  "lucide/settings.svg",         28, 28, TEXT,   "stroke"),
 
     # Usage-screen header mark. Ships from drop/icon_usage_hdr.svg (the Claude
     # Code logo, full-colour -> kept as-is). The vendored fallback is only a
