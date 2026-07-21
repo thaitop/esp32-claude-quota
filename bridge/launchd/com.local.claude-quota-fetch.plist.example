@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd job for the quota fetcher (talks to claude.ai on a 60s timer).
+
+  Setup:
+    1. cp this file to ~/Library/LaunchAgents/, dropping the .example suffix.
+    2. Replace /Users/you/esp32-claude-quota with your actual repo path.
+    3. launchctl load ~/Library/LaunchAgents/com.local.claude-quota-fetch.plist
+
+  No session key here -- it is read from ~/.config/claude-quota/session-key at
+  run time. A plist is world readable; keep credentials out of it.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.local.claude-quota-fetch</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/you/esp32-claude-quota/bridge/claude-quota-fetch</string>
+    <string>--interval</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/claude-quota-fetch.out</string>
+  <key>StandardErrorPath</key><string>/tmp/claude-quota-fetch.err</string>
+</dict>
+</plist>
