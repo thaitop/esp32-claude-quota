@@ -84,6 +84,15 @@ constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 20000;
 // A reading older than this loses Trust regardless of how the fetch went.
 constexpr uint32_t QUOTA_STALENESS_LIMIT_S = 30 * 60;
 
+// The length of each quota window, used only to place the pace marker on the
+// progress bar (elapsed = windowLen - secondsToReset). These are Claude's fixed
+// rate-limit windows, not something the bridge reports -- the cache carries the
+// absolute reset time, not a duration, so the geometry has to live here. Marker
+// placement is pure time arithmetic and never touches the reported utilization
+// (ADR-0001): a wrong constant slides a hint, it cannot invent a percentage.
+constexpr int32_t QUOTA_WINDOW_SESSION_S = 5 * 60 * 60;       // ~5h rolling
+constexpr int32_t QUOTA_WINDOW_WEEKLY_S = 7 * 24 * 60 * 60;   // 7 days
+
 // ---------------------------------------------------------------------------
 // Interaction
 // ---------------------------------------------------------------------------

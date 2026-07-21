@@ -46,12 +46,22 @@ constexpr int16_t FOOT_Y = 52;  // 52..67 at Inter 12, four clear of the bar and
                                 // nine off the card's bottom edge
 constexpr int16_t CLOCK = 14;
 
+// The pace marker: a thin vertical tick riding on the bar at the fraction of
+// the window that has elapsed. Two pixels wide so it reads as a line rather
+// than a block; two taller than the bar on each side so it is legible against a
+// full indicator. A solid rect, deliberately not a gradient bar -- it costs no
+// LVGL layer buffer, unlike the indicator it sits on (ADR-0003).
+constexpr int16_t MARK_W = 2;
+constexpr int16_t MARK_H = BAR_H + 4;
+constexpr int16_t MARK_Y = BAR_Y - 2;
+
 struct CardWidgets {
   lv_obj_t *root = nullptr;
   lv_obj_t *utilization = nullptr;
   lv_obj_t *pill = nullptr;
   lv_obj_t *pillLabel = nullptr;
   lv_obj_t *bar = nullptr;
+  lv_obj_t *marker = nullptr;
   lv_obj_t *clock = nullptr;
   lv_obj_t *resets = nullptr;
 
@@ -148,6 +158,13 @@ void buildCard(CardWidgets &card, lv_obj_t *parent, int index, const char *badge
   lv_obj_set_style_bg_opa(card.bar, LV_OPA_COVER, LV_PART_INDICATOR);
   lv_obj_set_style_bg_grad_dir(card.bar, LV_GRAD_DIR_HOR, LV_PART_INDICATOR);
 
+  // Created after the bar so it draws over the indicator. Starts hidden: with no
+  // trusted utilization there is nothing to pace against, so updateMarker keeps
+  // it off until a reading arrives.
+  card.marker = makePanel(card.root, MARK_W, MARK_H, 0, theme::TEXT);
+  lv_obj_set_pos(card.marker, PAD, MARK_Y);
+  lv_obj_add_flag(card.marker, LV_OBJ_FLAG_HIDDEN);
+
   card.resets = makeLabel(card.root, &font_inter_12, theme::MUTED);
   lv_obj_set_pos(card.resets, PAD + CLOCK + 6, FOOT_Y);
 
@@ -161,7 +178,37 @@ void buildCard(CardWidgets &card, lv_obj_t *parent, int index, const char *badge
   lv_obj_align_to(card.clock, card.resets, LV_ALIGN_OUT_LEFT_MID, -6, 1);
 }
 
-void updateCard(CardWidgets &card, const QuotaWindow &window) {
+// Place the pace marker at the elapsed fraction of the window, reddened when the
+// fill (utilization) has run past it -- quota burning faster than the clock.
+// Hidden whenever there is nothing trustworthy to pace against.
+void updateMarker(CardWidgets &card, const QuotaWindow &window,
+                  int32_t windowSeconds) {
+  const bool known = window.trusted && window.utilization >= 0 &&
+                     window.secondsToReset >= 0 && windowSeconds > 0;
+  if (!known) {
+    lv_obj_add_flag(card.marker, LV_OBJ_FLAG_HIDDEN);
+    return;
+  }
+  lv_obj_remove_flag(card.marker, LV_OBJ_FLAG_HIDDEN);
+
+  int32_t elapsed = windowSeconds - window.secondsToReset;
+  if (elapsed < 0) elapsed = 0;
+  if (elapsed > windowSeconds) elapsed = windowSeconds;
+
+  // 64-bit intermediates: weekly's 604800s times a ~300px travel overflows a
+  // 32-bit multiply. Travel is the bar minus the marker's own width so the tick
+  // stays fully inside the track at both ends.
+  const int32_t travel = (CARD_W - 2 * PAD) - MARK_W;
+  const int32_t x = PAD + (int32_t)((int64_t)elapsed * travel / windowSeconds);
+  lv_obj_set_pos(card.marker, x, MARK_Y);
+
+  const int32_t elapsedPct = (int32_t)((int64_t)elapsed * 100 / windowSeconds);
+  const uint32_t tint = window.utilization > elapsedPct ? theme::RED : theme::TEXT;
+  lv_obj_set_style_bg_color(card.marker, theme::colour(tint), LV_PART_MAIN);
+}
+
+void updateCard(CardWidgets &card, const QuotaWindow &window,
+                int32_t windowSeconds) {
   const int8_t utilization = window.trusted ? window.utilization : -1;
 
   if (utilization != card.shownUtilization) {
@@ -177,6 +224,10 @@ void updateCard(CardWidgets &card, const QuotaWindow &window) {
     lv_obj_set_style_bg_grad_color(card.bar, theme::colour(to), LV_PART_INDICATOR);
     lv_obj_set_style_image_recolor(card.clock, theme::colour(from), LV_PART_MAIN);
     lv_bar_set_value(card.bar, utilization < 0 ? 0 : utilization, LV_ANIM_ON);
+
+    // Utilization moving can flip the marker across the pace line even when the
+    // second has not ticked, so recompute it here too.
+    updateMarker(card, window, windowSeconds);
   }
 
   if (window.secondsToReset != card.shownSeconds) {
@@ -186,6 +237,8 @@ void updateCard(CardWidgets &card, const QuotaWindow &window) {
     format::duration(window.secondsToReset, span, sizeof(span));
     snprintf(text, sizeof(text), "Resets in %s", span);
     lv_label_set_text(card.resets, text);
+
+    updateMarker(card, window, windowSeconds);
   }
 }
 
@@ -239,8 +292,8 @@ void buildClaudeScreen(lv_obj_t *parent) {
 void updateClaudeScreen(const AppModel &model) {
   updateStatus(model);
   updateClock(model);
-  updateCard(cards[0], model.quota.session);
-  updateCard(cards[1], model.quota.weekly);
+  updateCard(cards[0], model.quota.session, QUOTA_WINDOW_SESSION_S);
+  updateCard(cards[1], model.quota.weekly, QUOTA_WINDOW_WEEKLY_S);
 }
 
 }  // namespace ui
