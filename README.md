@@ -117,8 +117,7 @@ starts with `sk-ant-sid01-`. Claude Code's OAuth login does **not** work; the
 usage endpoint is cookie authenticated. The script refuses a group- or
 world-readable key file, so the `chmod` is not optional.
 
-<details>
-<summary><b>How to find the session key</b></summary>
+### How to find the session key
 
 1. **Log in.** Open [claude.ai](https://claude.ai) in a browser and sign in.
 2. **Open Developer Tools.**
@@ -130,8 +129,6 @@ world-readable key file, so the `chmod` is not optional.
    - Firefox: **Storage** tab → expand **Cookies** → click `https://claude.ai`.
    - Safari: **Storage** tab → **Cookies** → click `https://claude.ai`.
 4. **Copy the value.** Find the cookie named `sessionKey` and copy its **Value** (the `sk-ant-sid01-…` string) into the key file above.
-
-</details>
 
 Treat that value like your password — it is a full account credential, not a
 scoped API key (see [Security notes](#security-notes)).
