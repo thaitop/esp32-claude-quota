@@ -20,6 +20,21 @@ ILI9341 + XPT2046 resistive touch), drawn with LVGL 9.
 [CONTEXT.md](CONTEXT.md) defines the shared vocabulary. The [ADRs](docs/adr/)
 record the four decisions that constrain the rest.
 
+## The screens
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/1-usage-page.jpeg" width="220"><br><b>Claude</b></td>
+    <td align="center"><img src="docs/images/2-weekly-page.jpeg" width="220"><br><b>Weekly Usage</b></td>
+    <td align="center"><img src="docs/images/3-weather-page.jpeg" width="220"><br><b>Weather</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/images/4-crypto-page.jpeg" width="220"><br><b>Crypto</b></td>
+    <td align="center"><img src="docs/images/5-stock-page.jpeg" width="220"><br><b>Stock</b></td>
+    <td align="center"><img src="docs/images/6-settings-page.jpeg" width="220"><br><b>Setting</b></td>
+  </tr>
+</table>
+
 ## What you need
 
 | Item | Notes |
