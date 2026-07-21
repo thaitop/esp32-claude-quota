@@ -28,7 +28,7 @@
 #define WEATHER_PATH_FMT                                                    \
   "/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,"       \
   "apparent_temperature,relative_humidity_2m,is_day,weather_code&timezone=" \
-  "auto"
+  "Asia/Bangkok"
 
 // CoinGecko simple/price. Free tier, no API key.
 #define CRYPTO_HOST "api.coingecko.com"
