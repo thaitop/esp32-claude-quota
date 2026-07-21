@@ -81,14 +81,14 @@ int shownStatus = -1;
 char shownClock[6] = "-";
 
 void buildHeader(lv_obj_t *parent) {
-  lv_obj_t *mascot = lv_image_create(parent);
-  lv_image_set_src(mascot, &img_mascot);
-  lv_obj_set_pos(mascot, 10, 5);
+  lv_obj_t *badge = lv_image_create(parent);
+  lv_image_set_src(badge, &icon_usage_hdr);
+  lv_obj_set_pos(badge, 10, 5);
 
   // Smaller than the design's 27px and bold instead. At 27 Regular the word
   // outweighed the figures it introduces; 22 Bold reads as a label rather than
   // as the loudest thing on the screen. Sat at y=4 so its 26px line box centres
-  // on the mascot beside it.
+  // on the badge beside it.
   lv_obj_t *title = makeLabel(parent, &font_inter_22_bold, theme::TEXT);
   lv_label_set_text(title, "Usage");
   lv_obj_set_pos(title, 46, 4);

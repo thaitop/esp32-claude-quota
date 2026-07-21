@@ -74,13 +74,30 @@ void paintBadge(MarketSession session) {
   }
 }
 
+// One logo per ticker, indexed by the Ticker enum so row i shows company i.
+const lv_image_dsc_t *logoFor(size_t i) {
+  switch ((Ticker)i) {
+  case Ticker::AAPL: return &logo_aapl;
+  case Ticker::NVDA: return &logo_nvda;
+  case Ticker::TSLA: return &logo_tsla;
+  case Ticker::GOOG: return &logo_goog;
+  default:           return &logo_msft;
+  }
+}
+
 void buildRow(lv_obj_t *parent, size_t i) {
   lv_obj_t *card =
       makeCard(parent, PAD, ROW_Y0 + (int16_t)i * ROW_PITCH, ROW_W, ROW_H);
 
+  lv_obj_t *logo = lv_image_create(card);
+  lv_image_set_src(logo, logoFor(i));
+  lv_obj_align(logo, LV_ALIGN_LEFT_MID, SYM_X, 0);
+
+  // The symbol clears the 20px logo plus a gap; price/percent columns are
+  // pinned to the right edge, so nothing else moves.
   lv_obj_t *symbol = makeLabel(card, &font_inter_17, theme::TEXT);
   lv_label_set_text(symbol, stockSymbol((Ticker)i));
-  lv_obj_align(symbol, LV_ALIGN_LEFT_MID, SYM_X, 0);
+  lv_obj_align(symbol, LV_ALIGN_LEFT_MID, SYM_X + 20 + 8, 0);
 
   priceLabels[i] = makeLabel(card, &font_inter_17, theme::TEXT);
   lv_label_set_text(priceLabels[i], format::UNKNOWN);
