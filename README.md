@@ -7,7 +7,7 @@
 <p align="center"><b>💸 Zero Claude tokens — watching your quota never spends it.</b></p>
 
 <p align="center">
-  <a href="https://s.shopee.co.th/9fJTGEoal1"><img alt="Buy the board on Shopee (TH)" src="docs/images/button-shop.webp" width="380" style="display:block;margin:0 auto"></a>
+  <a href="https://s.shopee.co.th/9fJTGEoal1"><img alt="Buy the board on Shopee (TH)" src="docs/images/button-shop-en.webp" width="380" style="display:block;margin:0 auto"></a>
 </p>
 
 A desk display for Claude Code's two usage windows, plus weather, crypto and

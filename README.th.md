@@ -4,9 +4,7 @@
   <a href="README.md">🇬🇧 English</a> &nbsp;·&nbsp; <b>🇹🇭 ภาษาไทย</b>
 </p>
 
-> ต้นฉบับคือ [README.md](README.md) หากมีข้อขัดแย้ง ให้ยึดฉบับอังกฤษ
-
-<p align="center"><b>💸 ไม่กิน Claude token เลย — เฝ้าดูโควตาไม่เปลืองโควตา</b></p>
+<p align="center"><b>💸 ไม่กิน Claude token เลย — ติดตามดูโควตาแบบไม่เปลืองโควตา</b></p>
 
 <p align="center">
   <a href="https://s.shopee.co.th/9fJTGEoal1"><img alt="ซื้อบอร์ดบน Shopee" src="docs/images/button-shop.webp" width="380" style="display:block;margin:0 auto"></a>
