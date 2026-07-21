@@ -6,6 +6,10 @@
 
 <p align="center"><b>💸 Zero Claude tokens — watching your quota never spends it.</b></p>
 
+<p align="center">
+  <a href="https://s.shopee.co.th/9fJTGEoal1"><img alt="Buy the board on Shopee (TH)" src="docs/images/button-shop.webp" width="380" style="display:block;margin:0 auto"></a>
+</p>
+
 A desk display for Claude Code's two usage windows, plus weather, crypto and
 stocks, running on the "Cheap Yellow Display" (ESP32-WROOM-32 + 2.8" 240x320
 ILI9341 + XPT2046 resistive touch), drawn with LVGL 9.

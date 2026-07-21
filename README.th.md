@@ -8,6 +8,10 @@
 
 <p align="center"><b>💸 ไม่กิน Claude token เลย — เฝ้าดูโควตาไม่เปลืองโควตา</b></p>
 
+<p align="center">
+  <a href="https://s.shopee.co.th/9fJTGEoal1"><img alt="ซื้อบอร์ดบน Shopee" src="docs/images/button-shop.webp" width="380" style="display:block;margin:0 auto"></a>
+</p>
+
 จอตั้งโต๊ะสำหรับหน้าต่างการใช้งานสองช่วงของ Claude Code พร้อมข้อมูลอากาศ
 คริปโต และหุ้น รันบน "Cheap Yellow Display" (ESP32-WROOM-32 + จอ 2.8" 240x320
 ILI9341 + ทัชสกรีนแบบ resistive XPT2046) วาดด้วย LVGL 9
