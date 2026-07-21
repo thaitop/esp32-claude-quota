@@ -112,10 +112,29 @@ pbpaste > ~/.config/claude-quota/session-key   # or paste into an editor
 chmod 600 ~/.config/claude-quota/session-key
 ```
 
-The value is the `sessionKey` cookie from a browser logged in to claude.ai
-(dev tools → Application → Cookies → `https://claude.ai`). Claude Code's OAuth
-login does **not** work — the usage endpoint is cookie authenticated. The script
-refuses a group- or world-readable key file, so the `chmod` is not optional.
+The value is the `sessionKey` cookie from a browser logged in to claude.ai — it
+starts with `sk-ant-sid01-`. Claude Code's OAuth login does **not** work; the
+usage endpoint is cookie authenticated. The script refuses a group- or
+world-readable key file, so the `chmod` is not optional.
+
+<details>
+<summary><b>How to find the session key</b></summary>
+
+1. **Log in.** Open [claude.ai](https://claude.ai) in a browser and sign in.
+2. **Open Developer Tools.**
+   - Chrome / Edge / Brave: `F12`, or `Cmd+Option+I` (macOS) / `Ctrl+Shift+I` (Windows).
+   - Firefox: `F12`, or `Cmd+Option+I` (macOS) / `Ctrl+Shift+I` (Windows).
+   - Safari: first enable it at Settings → Advanced → *Show features for web developers*, then `Cmd+Option+I`.
+3. **Go to the cookies.**
+   - Chrome / Edge / Brave: **Application** tab → expand **Cookies** on the left → click `https://claude.ai`.
+   - Firefox: **Storage** tab → expand **Cookies** → click `https://claude.ai`.
+   - Safari: **Storage** tab → **Cookies** → click `https://claude.ai`.
+4. **Copy the value.** Find the cookie named `sessionKey` and copy its **Value** (the `sk-ant-sid01-…` string) into the key file above.
+
+</details>
+
+Treat that value like your password — it is a full account credential, not a
+scoped API key (see [Security notes](#security-notes)).
 
 ```bash
 python3 bridge/fetch_usage.py --check    # verify paths/permissions, no key printed
