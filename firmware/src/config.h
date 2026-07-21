@@ -50,6 +50,25 @@
   CRYPTO_ID_BNB "&vs_currencies=usd&include_24hr_change=true"            \
   "&include_24hr_vol=true"
 
+// Finnhub /quote. Free tier: 60 requests/minute, one symbol per request, and
+// no historical candles -- which is why the Stock screen shows a price and a
+// day's change but no chart. The token is a soft credential (read-only, public
+// market data) and so lives in secrets.h with the rest, fetched directly by the
+// device rather than through the bridge -- see ADR-0004 on why that bends
+// ADR-0002 by degree rather than in kind.
+#define FINNHUB_HOST "finnhub.io"
+
+// One symbol at a time, the token appended. `%s` twice: symbol then token.
+#define FINNHUB_PATH_FMT "/api/v1/quote?symbol=%s&token=%s"
+
+// US regular session in Eastern wall-clock minutes past midnight, for the
+// market-open badge. Regular hours only; pre- and post-market are "closed"
+// here, which matches what the price is doing when nobody is trading the open
+// auction. DST is handled where the badge is computed (net/market.cpp); these
+// are the same numbers year round.
+constexpr int MARKET_OPEN_MINUTE = 9 * 60 + 30;   // 09:30 ET
+constexpr int MARKET_CLOSE_MINUTE = 16 * 60;      // 16:00 ET
+
 // ---------------------------------------------------------------------------
 // Clock
 // ---------------------------------------------------------------------------
@@ -76,6 +95,9 @@ constexpr uint32_t POLL_QUOTA_MS = 20UL * 1000;         // LAN, free, no limits
 constexpr uint32_t POLL_HISTORY_MS = 10UL * 60 * 1000;  // changes slowly
 constexpr uint32_t POLL_WEATHER_MS = 5UL * 60 * 1000;   // Open-Meteo: 10k/day
 constexpr uint32_t POLL_CRYPTO_MS = 60UL * 1000;        // CoinGecko free tier
+// One symbol per pass, five symbols: at 12s each the whole list refreshes in a
+// minute, the same freshness the coins get. Well inside Finnhub's 60/min.
+constexpr uint32_t POLL_STOCK_MS = 12UL * 1000;
 constexpr uint32_t POLL_RETRY_MS = 5UL * 1000;
 
 constexpr uint32_t HTTP_TIMEOUT_MS = 6000;

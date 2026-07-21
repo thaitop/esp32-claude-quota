@@ -11,7 +11,7 @@ A desk display for Claude Code's two rate-limit windows, plus weather and crypto
 
 Read these before non-trivial work — they carry the reasoning the code assumes:
 - **`CONTEXT.md`** — the shared vocabulary both halves use (Quota Window, Utilization, Trust, Staleness, Snapshot, Feed, Ramp, …). Terms have one name on both sides of the wire; keep it that way, and honour the `_Avoid_` lists.
-- **`docs/adr/`** — the three decisions that constrain everything else (see Invariants below).
+- **`docs/adr/`** — the four decisions that constrain everything else (see Invariants below).
 - **`README.md`** — build/flash/run and troubleshooting for someone starting from bare hardware.
 
 ## Commands
@@ -61,14 +61,16 @@ The seam is **`model.h`**: the `AppModel` struct and its snapshots. `net/` fills
 
 - **`net/poller.cpp`** — round-robin scheduler. Runs **at most one fetch per pass**, for whichever feed is most overdue. `main.cpp` calls `net::service()` each loop.
 - **`net/bridge.cpp`** — the Bridge Feed (quota + history). History runs on its own 10-min sub-timer *inside* the Bridge Feed's slot, so there is still only one request in flight ever.
-- **`net/https.cpp`** — shared one-shot TLS GET for Weather/Crypto; tears the client down the moment the body parses.
-- **`ui/`** — one `screen_*.cpp` per Screen (Claude, Weekly, Weather, Crypto, Setting), plus `nav`, `theme`, `widgets`, `format`. Screens are change-detecting; only the active Screen repaints. Switching to a Screen calls its update function so it redraws what went stale while hidden (`refreshActiveScreen` in `main.cpp`).
+- **`net/https.cpp`** — shared one-shot TLS GET for Weather/Crypto/Stock; tears the client down the moment the body parses.
+- **`net/stock.cpp`** — the Stock Feed. Finnhub's quote endpoint takes one symbol, so this fetches **one ticker per pass** and advances a cursor — the same "sub-schedule inside one slot" trick as bridge history, keeping one request in flight (ADR-0003). Needs a soft `FINNHUB_TOKEN` (ADR-0004).
+- **`net/market.cpp`** — the Market Session (Open/Closed/Unknown) for the Stock badge, computed from the clock in US Eastern with DST but **no exchange holidays** (ADR-0004). Not a feed; written into the model each second like the wall clock, and kept out of `ui/` for the same reason `<time.h>` is.
+- **`ui/`** — one `screen_*.cpp` per Screen (Claude, Weekly, Weather, Crypto, Stock, Setting), plus `nav`, `theme`, `widgets`, `format`. Stock breaks the hero+tiles family on purpose: it is a five-row list, since five tickers don't survive that layout and a glance wants them all at once. Screens are change-detecting; only the active Screen repaints. Switching to a Screen calls its update function so it redraws what went stale while hidden (`refreshActiveScreen` in `main.cpp`).
 - **`config.h`** — committed tunables (poll intervals, timeouts, coins, TZ, colour ramp, touch calibration). **`secrets.h`** — gitignored (WiFi creds, bridge URL, home coordinates); copy from `secrets.h.example`.
 
-### Invariants (the three ADRs — violating these produces silent, delayed failures)
+### Invariants (the four ADRs — violating these produces silent, delayed failures)
 
 1. **Utilization is reported, never derived** (ADR-0001). When the cache is missing/stale the display shows Unknown (`--`), never a percentage synthesized from token counts. Zero is a real value; Unknown is `-1` sentinels (`UTILIZATION_UNKNOWN`, `RESET_UNKNOWN`) rendered as `--`. Token Total is reported under its own name and never feeds utilization.
-2. **Mixed feed topology** (ADR-0002). Quota goes through the bridge (credential stays off the device); Weather and Crypto are fetched **directly** by the ESP32 with `setInsecure()` (no credential, no private data, no CA to expire). A sleeping Mac costs only the two Claude screens.
+2. **Mixed feed topology** (ADR-0002, ADR-0004). Quota goes through the bridge (full account credential stays off the device); Weather, Crypto and Stock are fetched **directly** by the ESP32 with `setInsecure()`. Weather/Crypto carry no credential; Stock carries a **soft** one (`FINNHUB_TOKEN` — read-only public market data, ADR-0004), which is why it lives in `secrets.h`, not `config.h`. A sleeping Mac costs only the two Claude screens.
 3. **Partial draw buffer, one feed in flight** (ADR-0003). ~290KB usable heap, no PSRAM; a TLS handshake peaks ~45KB. LVGL uses a 1/10-screen double buffer (~30KB), and feeds are **never** polled concurrently. The subtle third heap consumer is LVGL's own pool `LV_MEM_SIZE`: the Claude screen's gradient progress bar needs a 9088-byte *layer* per repaint. If the largest contiguous free block drops below that, LVGL logs "Allocating layer buffer failed. Try later" and retries forever, starving the loop — a freeze/reboot minutes later, not a crash at the edit. **Any change that grows a screen or touches buffer/poll scheduling must be checked against `lv_mem_monitor()` free-biggest on the device** (printed at boot in `main.cpp`), not the (ceiling-less) host.
 
 ### Trust vs. Fetch Outcome

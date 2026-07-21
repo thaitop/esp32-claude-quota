@@ -13,19 +13,22 @@
 namespace ui {
 namespace {
 
-// Nine rows between the title and the navbar, in the smallest face the design
+// Ten rows between the title and the navbar, in the smallest face the design
 // already uses. The first pass set them in Inter 14 on an 18px pitch, which
 // put the last row's bottom edge at 202 against a page 194 tall -- the uptime
 // row was drawn underneath the navbar, where it is neither visible nor
 // obviously missing. Inter 12 sets a 15px line, so a 16px pitch clears it.
 //
-//   36 + 9 * 16 = 180, against the 194 the page has.
+// The stock feed made it ten, which needed the two pixels back that a nine-row
+// start could spare:
 //
-// Nine rows is not negotiable: each one answers a different question about a
+//   34 + 9 * 16 = 178, +15 line = 193, against the 194 the page has.
+//
+// Every row is not negotiable: each one answers a different question about a
 // stuck display, and the screen exists to stop the next one meaning a cable.
 constexpr int16_t PAD = 12;
 constexpr int16_t ROW_H = 16;
-constexpr int16_t ROW_Y = 36;
+constexpr int16_t ROW_Y = 34;
 constexpr int16_t VALUE_X = 106;
 
 // The brightness control rides in the header rather than joining the rows
@@ -57,6 +60,7 @@ enum Row : uint8_t {
   RowBridgeFeed,
   RowWeatherFeed,
   RowCryptoFeed,
+  RowStockFeed,
   RowQuotaAge,
   RowHeap,
   RowUptime,
@@ -65,7 +69,7 @@ enum Row : uint8_t {
 
 const char *const LABELS[RowCount] = {
     "WiFi", "IP", "Bridge", "Bridge feed", "Weather feed",
-    "Crypto feed", "Quota age", "Free heap", "Uptime",
+    "Crypto feed", "Stock feed", "Quota age", "Free heap", "Uptime",
 };
 
 lv_obj_t *values[RowCount] = {nullptr};
@@ -212,6 +216,7 @@ void updateSettingScreen(const AppModel &model, uint32_t nowMs) {
   setFeedRow(RowBridgeFeed, model.status(Feed::Bridge), nowMs);
   setFeedRow(RowWeatherFeed, model.status(Feed::Weather), nowMs);
   setFeedRow(RowCryptoFeed, model.status(Feed::Crypto), nowMs);
+  setFeedRow(RowStockFeed, model.status(Feed::Stock), nowMs);
 
   // Staleness is the age of the reading, not of the fetch: a healthy bridge
   // serving a cache the Claude Usage app stopped refreshing looks fine on the

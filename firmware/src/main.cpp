@@ -16,7 +16,9 @@
 #include "model.h"
 #include "net/bridge.h"
 #include "net/crypto.h"
+#include "net/market.h"
 #include "net/poller.h"
+#include "net/stock.h"
 #include "net/timesync.h"
 #include "net/weather.h"
 #include "secrets.h"
@@ -24,6 +26,7 @@
 #include "ui/screen_claude.h"
 #include "ui/screen_crypto.h"
 #include "ui/screen_setting.h"
+#include "ui/screen_stock.h"
 #include "ui/screen_weather.h"
 #include "ui/screen_weekly.h"
 #include "ui/theme.h"
@@ -59,6 +62,7 @@ void refreshActiveScreen(uint32_t nowMs) {
     case ui::Screen::Weekly:  ui::updateWeeklyScreen(model); break;
     case ui::Screen::Weather: ui::updateWeatherScreen(model); break;
     case ui::Screen::Crypto:  ui::updateCryptoScreen(model); break;
+    case ui::Screen::Stock:   ui::updateStockScreen(model); break;
     case ui::Screen::Setting: ui::updateSettingScreen(model, nowMs); break;
     default: break;
   }
@@ -155,6 +159,7 @@ void setup() {
   ui::buildWeeklyScreen(ui::page(ui::Screen::Weekly));
   ui::buildWeatherScreen(ui::page(ui::Screen::Weather));
   ui::buildCryptoScreen(ui::page(ui::Screen::Crypto));
+  ui::buildStockScreen(ui::page(ui::Screen::Stock));
   ui::buildSettingScreen(ui::page(ui::Screen::Setting));
   ui::updateClaudeScreen(model);
   display::tick();
@@ -164,6 +169,7 @@ void setup() {
   ui::warnIfOverflowing("weekly", ui::page(ui::Screen::Weekly));
   ui::warnIfOverflowing("weather", ui::page(ui::Screen::Weather));
   ui::warnIfOverflowing("crypto", ui::page(ui::Screen::Crypto));
+  ui::warnIfOverflowing("stock", ui::page(ui::Screen::Stock));
   ui::warnIfOverflowing("setting", ui::page(ui::Screen::Setting));
 
   connectWifi();
@@ -172,6 +178,7 @@ void setup() {
   // already on screen with a hole where the time goes.
   net::syncClock();
   net::readClock(model);
+  model.stocks.session = net::marketSession();
 
   // Registration order does not set priority -- the poller picks whichever
   // Feed is most overdue -- but it does set which one goes first at boot,
@@ -179,6 +186,7 @@ void setup() {
   net::registerFeed(Feed::Bridge, net::fetchBridge, POLL_QUOTA_MS);
   net::registerFeed(Feed::Weather, net::fetchWeather, POLL_WEATHER_MS);
   net::registerFeed(Feed::Crypto, net::fetchCrypto, POLL_CRYPTO_MS);
+  net::registerFeed(Feed::Stock, net::fetchStock, POLL_STOCK_MS);
 
   // What the five screens cost LVGL's own pool, once they are all built.
   //
@@ -233,15 +241,18 @@ void loop() {
 
   if (net::service(model, now)) {
     Serial.printf(
-        "feeds: bridge=%s weather=%s crypto=%s | session=%d%% weekly=%d%% "
-        "stale=%us | history=%u | %.1fC | BTC $%.2f | heap=%u\n",
+        "feeds: bridge=%s weather=%s crypto=%s stock=%s | session=%d%% "
+        "weekly=%d%% stale=%us | history=%u | %.1fC | BTC $%.2f | "
+        "AAPL $%.2f | heap=%u\n",
         describe(model.status(Feed::Bridge).outcome),
         describe(model.status(Feed::Weather).outcome),
         describe(model.status(Feed::Crypto).outcome),
+        describe(model.status(Feed::Stock).outcome),
         (int)model.quota.session.utilization, (int)model.quota.weekly.utilization,
         (unsigned)model.quota.stalenessSeconds, (unsigned)model.history.count,
         (double)model.weather.temperatureC,
         (double)model.crypto.coin(Coin::BTC).priceUsd,
+        (double)model.stocks.quote(Ticker::AAPL).priceUsd,
         (unsigned)display::freeHeap());
     refreshActiveScreen(now);
   }
@@ -251,6 +262,7 @@ void loop() {
     lastSecond = now;
     recordLink();
     net::readClock(model);
+    model.stocks.session = net::marketSession();
     if (model.quota.session.secondsToReset > 0) model.quota.session.secondsToReset--;
     if (model.quota.weekly.secondsToReset > 0) model.quota.weekly.secondsToReset--;
     refreshActiveScreen(now);

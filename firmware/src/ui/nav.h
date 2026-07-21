@@ -1,8 +1,10 @@
 // The navbar and the screen it selects.
 //
-// Five Slots along the bottom edge, one Screen behind each. The Slots are the
-// controls; the Screens are the destinations -- see CONTEXT.md, which keeps
-// those two words apart deliberately.
+// One Slot along the bottom edge per Screen, one Screen behind each. The Slots
+// are the controls; the Screens are the destinations -- see CONTEXT.md, which
+// keeps those two words apart deliberately. The bar sizes itself from
+// Screen::Count, so a Screen added here widens the row rather than needing the
+// geometry retuned.
 #pragma once
 
 #include <lvgl.h>
@@ -16,6 +18,7 @@ enum class Screen : uint8_t {
   Weekly,
   Weather,
   Crypto,
+  Stock,
   Setting,
   Count,
 };

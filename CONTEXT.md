@@ -47,9 +47,11 @@ _Avoid_: usage, cost, spend
 ## Data flow
 
 **Feed**:
-One origin of displayable data, together with its polling schedule. Three exist:
-the Bridge Feed, the Weather Feed and the Crypto Feed. Answers "where does this
-number come from".
+One origin of displayable data, together with its polling schedule. Four exist:
+the Bridge Feed, the Weather Feed, the Crypto Feed and the Stock Feed. Answers
+"where does this number come from". The Stock Feed is the one that fetches a
+single item per pass — one ticker at a time — rather than its whole screen in
+one request, since Finnhub's quote endpoint takes one symbol.
 _Avoid_: source, provider, backend, API
 
 **Bridge**:
@@ -90,20 +92,33 @@ The displayed value when Trust is absent. Rendered as `--`. Distinct from zero,
 and never filled in with the last known figure.
 _Avoid_: null, empty, N/A
 
+**Ticker**:
+One tracked stock, named by its exchange symbol (AAPL, NVDA, …). The symbol the
+Stock Feed asks Finnhub about and the label the row prints are the same string —
+the counterpart to a Coin on the Crypto side.
+_Avoid_: stock, symbol (as a separate concept), equity
+
+**Market Session**:
+Whether the US regular trading session is open right now — Open, Closed, or
+Unknown. Derived from the clock, never fetched, and never confused with Trust: a
+price read while the market is Closed is still trustworthy, it just is not
+moving. Drives the Stock screen's badge.
+_Avoid_: market hours, open/closed flag, trading status
+
 ## Interface
 
 **Screen**:
-One full-display view owned by exactly one navbar slot. Five exist: Claude,
-Weekly Usage, Weather, Crypto, Setting.
+One full-display view owned by exactly one navbar slot. Six exist: Claude,
+Weekly Usage, Weather, Crypto, Stock, Setting.
 _Avoid_: page, view, tab (the tab is the control, not the destination)
 
 **Navbar**:
-The persistent strip of five icons along the bottom edge. Icon-only — the labels
+The persistent strip of six icons along the bottom edge. Icon-only — the labels
 from the original design are dropped.
 _Avoid_: tab bar, footer, menu
 
 **Slot**:
-One of the navbar's five touch targets. Its hit area is deliberately larger than
+One of the navbar's six touch targets. Its hit area is deliberately larger than
 the icon drawn inside it.
 _Avoid_: tab, button, item
 

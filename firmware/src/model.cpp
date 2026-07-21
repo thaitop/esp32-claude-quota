@@ -33,6 +33,17 @@ const char *coinName(Coin coin) {
   }
 }
 
+const char *stockSymbol(Ticker ticker) {
+  switch (ticker) {
+    case Ticker::AAPL: return "AAPL";
+    case Ticker::NVDA: return "NVDA";
+    case Ticker::TSLA: return "TSLA";
+    case Ticker::GOOG: return "GOOG";
+    case Ticker::MSFT: return "MSFT";
+    default:           return "--";
+  }
+}
+
 // WMO 4677, as Open-Meteo reports it. The ranges rather than the individual
 // codes: 61, 63 and 65 are light, moderate and heavy rain, and the screen has
 // one rain glyph.

@@ -4,7 +4,7 @@ A desk display for Claude Code's two usage windows, plus a few ambient
 readouts, running on the "Cheap Yellow Display" (ESP32-WROOM-32 + 2.8"
 240x320 ILI9341 + XPT2046 resistive touch), drawn with LVGL 9.
 
-Five Screens, one per navbar Slot:
+Six Screens, one per navbar Slot:
 
 | Screen | Shows | Feed |
 |---|---|---|
@@ -12,10 +12,11 @@ Five Screens, one per navbar Slot:
 | **Weekly Usage** | The last seven days of weekly utilization, plotted | Bridge |
 | **Weather** | Temperature, apparent temperature, conditions, humidity | Weather |
 | **Crypto** | One coin's price, 24-hour change, dollar move and volume; BTC/ETH/BNB via a toggle | Crypto |
+| **Stock** | Five tickers as a list — price and the day's move each; a market-open badge | Stock |
 | **Setting** | Link, per-feed health, quota staleness, heap, uptime, backlight | — |
 
 [CONTEXT.md](CONTEXT.md) defines the vocabulary both halves of the system use.
-The [ADRs](docs/adr/) record the three decisions that constrain the rest.
+The [ADRs](docs/adr/) record the four decisions that constrain the rest.
 
 ## Build one yourself
 
@@ -48,7 +49,15 @@ Edit `firmware/src/secrets.h`:
 #define BRIDGE_BASE_URL "http://192.168.1.117:8787"   // the LAN IP of the Claude Code machine
 #define WEATHER_LATITUDE  13.75f
 #define WEATHER_LONGITUDE 100.50f
+#define FINNHUB_TOKEN "your-finnhub-token"  // free key from finnhub.io/register — Stock screen only
 ```
+
+The Finnhub token is a soft credential: it reads public stock quotes and nothing
+else. Leaving the placeholder in place just means the Stock screen shows `--` for
+every ticker; every other screen works. Register a free key at
+[finnhub.io/register](https://finnhub.io/register) if you want live prices. Why
+it lives here rather than in `config.h`, and why the device is trusted with it
+directly, is [ADR-0004](docs/adr/0004-stock-feed-soft-credential.md).
 
 Find the bridge machine's IP with `ipconfig getifaddr en0` (macOS) or
 `hostname -I` (Linux). Prefer an IP over `.local` — mDNS resolution from the
@@ -57,8 +66,10 @@ from DHCP, give the machine a reservation so the firmware does not need
 reflashing when the lease changes.
 
 `secrets.h` is gitignored. Everything else — poll intervals, timeouts, the
-tracked coins, the timezone, colour thresholds, touch calibration — is in
-`firmware/src/config.h`, which is committed.
+tracked coins and stock tickers, the timezone, colour thresholds, touch
+calibration — is in `firmware/src/config.h`, which is committed. (The stock
+symbols themselves are a table in `model.cpp`; the market-hours window is in
+`config.h`.)
 
 The timezone is a POSIX TZ string and defaults to Bangkok:
 
@@ -375,9 +386,16 @@ limit accounting is not a plain token sum, so a token-derived percentage would
 be a guess wearing the costume of a fact
 ([ADR-0001](docs/adr/0001-never-derive-utilization-from-tokens.md)).
 
-Weather and crypto are fetched **directly by the device**, not proxied through
-the bridge, so a sleeping Mac costs the two Claude screens and leaves the other
-two working ([ADR-0002](docs/adr/0002-mixed-feed-topology.md)).
+Weather, crypto and stocks are fetched **directly by the device**, not proxied
+through the bridge, so a sleeping Mac costs the two Claude screens and leaves the
+other three working ([ADR-0002](docs/adr/0002-mixed-feed-topology.md)). The stock
+prices need a Finnhub API token on the device — a soft credential the other two
+direct feeds do without; that bend is
+[ADR-0004](docs/adr/0004-stock-feed-soft-credential.md). The Stock screen fetches
+one ticker per poll (Finnhub quotes one symbol at a time), cycling all five in
+about a minute, and shows a market-open badge worked out from the clock in US
+Eastern — with DST but without exchange holidays, so it reads "open" on the ten-odd
+market holidays a year.
 
 ### History
 
