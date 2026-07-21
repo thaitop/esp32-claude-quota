@@ -310,6 +310,18 @@ void updateCryptoScreen(const AppModel &model) {
   // if the first thing that happens after boot is a tap.
   source = &model;
 
+  // A Mode switch moved the tint behind the tiles and the footnote, and the
+  // segment strip (which paints on a tap, not a poll, so nothing else here
+  // would revisit it). Forget the figure sentinels and repaint the strip.
+  static uint8_t shownGen = 0;
+  if (theme::generation() != shownGen) {
+    shownGen = theme::generation();
+    everShown = false;
+    shownCoin = Coin::Count;
+    shownFootnote[0] = '\0';
+    paintSegments();
+  }
+
   const CoinQuote &quote = model.crypto.coin(selected);
   const FeedStatus &status = model.status(Feed::Crypto);
 

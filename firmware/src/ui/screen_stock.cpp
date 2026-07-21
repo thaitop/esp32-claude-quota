@@ -45,6 +45,7 @@ constexpr int16_t BADGE_Y = 6;
 
 lv_obj_t *badge = nullptr;
 lv_obj_t *badgeLabel = nullptr;
+lv_obj_t *logos[(size_t)Ticker::Count] = {nullptr};
 lv_obj_t *priceLabels[(size_t)Ticker::Count] = {nullptr};
 lv_obj_t *pctLabels[(size_t)Ticker::Count] = {nullptr};
 
@@ -92,6 +93,16 @@ void buildRow(lv_obj_t *parent, size_t i) {
   lv_obj_t *logo = lv_image_create(card);
   lv_image_set_src(logo, logoFor(i));
   lv_obj_align(logo, LV_ALIGN_LEFT_MID, SYM_X, 0);
+  logos[i] = logo;
+
+  // Every mark but Apple's carries its own brand colour and reads on either
+  // card. Apple's is a white silhouette baked for the dark card; on the pale
+  // Light card it turns white-on-white, so that one -- and only that one -- is
+  // recoloured to TEXT and re-tinted on a Mode switch below.
+  if ((Ticker)i == Ticker::AAPL) {
+    lv_obj_set_style_image_recolor(logo, theme::colour(theme::TEXT), LV_PART_MAIN);
+    lv_obj_set_style_image_recolor_opa(logo, LV_OPA_COVER, LV_PART_MAIN);
+  }
 
   // The symbol clears the 20px logo plus a gap; price/percent columns are
   // pinned to the right edge, so nothing else moves.
@@ -115,8 +126,7 @@ void buildStockScreen(lv_obj_t *parent) {
 
   badge = makePanel(parent, BADGE_W, BADGE_H, BADGE_H / 2, theme::CARD);
   lv_obj_set_pos(badge, BADGE_X, BADGE_Y);
-  lv_obj_set_style_border_color(badge, theme::colour(theme::CARD_EDGE),
-                                LV_PART_MAIN);
+  lv_obj_add_style(badge, theme::borderStyle(theme::CARD_EDGE), LV_PART_MAIN);
   lv_obj_set_style_border_width(badge, 1, LV_PART_MAIN);
   lv_obj_set_style_border_opa(badge, LV_OPA_COVER, LV_PART_MAIN);
 
@@ -135,6 +145,20 @@ void buildStockScreen(lv_obj_t *parent) {
 }
 
 void updateStockScreen(const AppModel &model) {
+  // A Mode switch moved the up/down tint on every row and the badge colour;
+  // forget the row and session sentinels so they repaint. 255 is no real
+  // MarketSession, so the badge is guaranteed to redraw even in the Mode where
+  // the session happens to be Unknown.
+  static uint8_t shownGen = 0;
+  if (theme::generation() != shownGen) {
+    shownGen = theme::generation();
+    for (size_t i = 0; i < (size_t)Ticker::Count; i++) shownValid[i] = false;
+    // Only Apple's mark is recoloured (see buildRow), so only it is re-tinted.
+    lv_obj_set_style_image_recolor(logos[(size_t)Ticker::AAPL],
+                                   theme::colour(theme::TEXT), LV_PART_MAIN);
+    shownSession = (MarketSession)255;
+  }
+
   const MarketSession session = model.stocks.session;
   if (session != shownSession) {
     shownSession = session;

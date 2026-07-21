@@ -253,6 +253,17 @@ void buildWeeklyScreen(lv_obj_t *parent) {
 }
 
 void updateWeeklyScreen(const AppModel &model) {
+  // A Mode switch moved the Ramp behind the hero figure, the chart series, the
+  // peak dot and the tiles; forget the sentinels those are gated on so they
+  // repaint. Structural colours followed their shared styles already.
+  static uint8_t shownGen = 0;
+  if (theme::generation() != shownGen) {
+    shownGen = theme::generation();
+    shownCurrent = -2;
+    shownCount = 0xFF;
+    shownStamp = 0;
+  }
+
   const HistorySnapshot &history = model.history;
   const int8_t weekly =
       model.quota.weekly.trusted ? model.quota.weekly.utilization : -1;

@@ -88,6 +88,10 @@ MANIFEST = [
     ("glyph_wifi_low",   "lucide/wifi-low.svg",      22, 16, TEXT,   "stroke"),
     ("glyph_wifi_off",   "lucide/wifi-off.svg",      22, 16, TEXT,   "stroke"),
     ("glyph_brightness", "lucide/sun.svg",           16, 16, TEXT,   "stroke"),
+    # The Setting header's Dark/Light toggle. Recoloured at runtime like the
+    # other glyphs; the moon marks Light (tap to leave for Dark) and the sun
+    # above marks Dark. Sized to sit with glyph_brightness beside it.
+    ("glyph_moon",       "lucide/moon.svg",           16, 16, TEXT,   "stroke"),
 
     ("wx_clear_day",    "lucide/sun.svg",            48, 48, AMBER,  "stroke"),
     ("wx_clear_night",  "lucide/moon.svg",           48, 48, LILAC,  "stroke"),

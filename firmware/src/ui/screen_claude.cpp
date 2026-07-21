@@ -122,8 +122,7 @@ void buildCard(CardWidgets &card, lv_obj_t *parent, int index, const char *badge
                uint32_t pillBg, uint32_t pillTx) {
   card.root = makePanel(parent, CARD_W, CARD_H, 12, theme::CARD);
   lv_obj_set_pos(card.root, CARD_X, CARD_Y[index]);
-  lv_obj_set_style_border_color(card.root, theme::colour(theme::CARD_EDGE),
-                                LV_PART_MAIN);
+  lv_obj_add_style(card.root, theme::borderStyle(theme::CARD_EDGE), LV_PART_MAIN);
   lv_obj_set_style_border_width(card.root, 1, LV_PART_MAIN);
   lv_obj_set_style_border_opa(card.root, LV_OPA_COVER, LV_PART_MAIN);
 
@@ -154,7 +153,7 @@ void buildCard(CardWidgets &card, lv_obj_t *parent, int index, const char *badge
   lv_obj_set_pos(card.bar, PAD, BAR_Y);
   lv_bar_set_range(card.bar, 0, 100);
   lv_obj_set_style_radius(card.bar, BAR_H / 2, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(card.bar, theme::colour(theme::TRACK), LV_PART_MAIN);
+  lv_obj_add_style(card.bar, theme::bgStyle(theme::TRACK), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(card.bar, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_radius(card.bar, BAR_H / 2, LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(card.bar, LV_OPA_COVER, LV_PART_INDICATOR);
@@ -316,6 +315,19 @@ void buildClaudeScreen(lv_obj_t *parent) {
 }
 
 void updateClaudeScreen(const AppModel &model) {
+  // A Mode switch moved the RGB behind the Ramp, the status dot and the wifi
+  // glyph while the values under them held; forget the sentinels those colours
+  // are gated on so this pass repaints them. The structural colours (pills,
+  // card, text) rode the switch on their shared styles already.
+  static uint8_t shownGen = 0;
+  if (theme::generation() != shownGen) {
+    shownGen = theme::generation();
+    shownStatus = -1;
+    shownBars = -1;
+    cards[0].shownUtilization = cards[1].shownUtilization = -2;
+    cards[0].shownSeconds = cards[1].shownSeconds = -2;
+  }
+
   updateStatus(model);
   updateClock(model);
   updateCard(cards[0], model.quota.session, QUOTA_WINDOW_SESSION_S);

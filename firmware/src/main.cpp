@@ -144,8 +144,13 @@ void setup() {
     while (true) delay(1000);
   }
 
+  // Before any widget is built, so the helpers attach styles already in the
+  // persisted Mode; the shared BG style then carries a later Mode switch to the
+  // root without a rebuild, same as every card and label.
+  theme::init();
+
   lv_obj_t *screen = lv_screen_active();
-  lv_obj_set_style_bg_color(screen, theme::colour(theme::BG), LV_PART_MAIN);
+  lv_obj_add_style(screen, theme::bgStyle(theme::BG), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 

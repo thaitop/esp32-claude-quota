@@ -75,7 +75,7 @@ void buildShell(lv_obj_t *parent) {
   lv_obj_set_pos(bar, NAV_X, NAV_Y);
   lv_obj_remove_flag(bar, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_style_radius(bar, 10, LV_PART_MAIN);
-  lv_obj_set_style_border_color(bar, theme::colour(theme::NAV_EDGE), LV_PART_MAIN);
+  lv_obj_add_style(bar, theme::borderStyle(theme::NAV_EDGE), LV_PART_MAIN);
   lv_obj_set_style_border_width(bar, 1, LV_PART_MAIN);
   lv_obj_set_style_border_opa(bar, LV_OPA_COVER, LV_PART_MAIN);
 
@@ -100,7 +100,7 @@ void buildShell(lv_obj_t *parent) {
   lv_obj_remove_style_all(marker);
   lv_obj_set_size(marker, MARK_W, MARK_H);
   lv_obj_set_style_radius(marker, MARK_H / 2, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(marker, theme::colour(theme::ACCENT), LV_PART_MAIN);
+  lv_obj_add_style(marker, theme::bgStyle(theme::ACCENT), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(marker, LV_OPA_COVER, LV_PART_MAIN);
 
   showScreen(Screen::Claude);

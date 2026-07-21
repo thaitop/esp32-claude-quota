@@ -14,10 +14,15 @@
 
 namespace ui {
 
-inline lv_obj_t *makeLabel(lv_obj_t *parent, const lv_font_t *font, uint32_t colour) {
+// The colour rides a shared style keyed by the Role, not a local property, so a
+// Mode switch that rewrites the style repaints this label without a rebuild. A
+// screen that later recolours this label from a value sets a *local* text
+// colour, which outranks the shared style; the Ramp/tint sites do exactly that
+// and repaint themselves off theme::generation().
+inline lv_obj_t *makeLabel(lv_obj_t *parent, const lv_font_t *font, uint32_t role) {
   lv_obj_t *label = lv_label_create(parent);
   lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
-  lv_obj_set_style_text_color(label, theme::colour(colour), LV_PART_MAIN);
+  lv_obj_add_style(label, theme::textStyle(role), LV_PART_MAIN);
   return label;
 }
 
@@ -27,7 +32,7 @@ inline lv_obj_t *makePanel(lv_obj_t *parent, int16_t w, int16_t h, int16_t radiu
   lv_obj_remove_style_all(panel);
   lv_obj_set_size(panel, w, h);
   lv_obj_set_style_radius(panel, radius, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(panel, theme::colour(fill), LV_PART_MAIN);
+  lv_obj_add_style(panel, theme::bgStyle(fill), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_remove_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
   return panel;
@@ -40,7 +45,7 @@ inline lv_obj_t *makeCard(lv_obj_t *parent, int16_t x, int16_t y, int16_t w,
                           int16_t h) {
   lv_obj_t *card = makePanel(parent, w, h, 12, theme::CARD);
   lv_obj_set_pos(card, x, y);
-  lv_obj_set_style_border_color(card, theme::colour(theme::CARD_EDGE), LV_PART_MAIN);
+  lv_obj_add_style(card, theme::borderStyle(theme::CARD_EDGE), LV_PART_MAIN);
   lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
   lv_obj_set_style_border_opa(card, LV_OPA_COVER, LV_PART_MAIN);
   return card;

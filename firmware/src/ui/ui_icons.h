@@ -22,6 +22,7 @@ extern const lv_image_dsc_t glyph_wifi_high;
 extern const lv_image_dsc_t glyph_wifi_low;
 extern const lv_image_dsc_t glyph_wifi_off;
 extern const lv_image_dsc_t glyph_brightness;
+extern const lv_image_dsc_t glyph_moon;
 extern const lv_image_dsc_t wx_clear_day;
 extern const lv_image_dsc_t wx_clear_night;
 extern const lv_image_dsc_t wx_partly_day;

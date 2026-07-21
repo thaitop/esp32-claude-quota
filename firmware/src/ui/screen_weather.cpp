@@ -42,6 +42,13 @@ constexpr int16_t GLYPH = 48;
 constexpr int16_t GLYPH_X = HERO_W - HERO_PAD - GLYPH;
 constexpr int16_t GLYPH_Y = (HERO_H - GLYPH) / 2;
 
+// A disc behind the glyph, a few pixels proud of it on every side. In Dark it
+// is the card's own colour and vanishes; in Light it goes dark so a pale sun or
+// a white snowflake reads against it instead of washing into the card.
+constexpr int16_t DISC = GLYPH + 6;
+constexpr int16_t DISC_X = GLYPH_X - 3;
+constexpr int16_t DISC_Y = GLYPH_Y - 3;
+
 // Same geometry as the Weekly screen's strip, to the pixel. Two rows of tiles
 // that differ by a few pixels between screens read as two grids.
 constexpr int16_t TILE_Y = 132;
@@ -56,6 +63,7 @@ struct Tile {
 
 lv_obj_t *hero = nullptr;
 lv_obj_t *glyph = nullptr;
+lv_obj_t *glyphDisc = nullptr;
 lv_obj_t *reading = nullptr;
 lv_obj_t *condition = nullptr;
 lv_obj_t *footnote = nullptr;
@@ -157,6 +165,11 @@ void buildWeatherScreen(lv_obj_t *parent) {
   lv_label_set_text(condition, format::UNKNOWN);
   lv_obj_set_pos(condition, HERO_PAD, COND_Y);
 
+  // Created before the glyph so it sits behind it. Hidden and shown with the
+  // glyph, so an untrusted reading does not leave a bare disc floating.
+  glyphDisc = makePanel(hero, DISC, DISC, DISC / 2, theme::GLYPH_DISC);
+  lv_obj_set_pos(glyphDisc, DISC_X, DISC_Y);
+
   glyph = lv_image_create(hero);
   lv_image_set_src(glyph, &wx_cloudy);
   lv_obj_set_pos(glyph, GLYPH_X, GLYPH_Y);
@@ -174,6 +187,16 @@ void buildWeatherScreen(lv_obj_t *parent) {
 }
 
 void updateWeatherScreen(const AppModel &model) {
+  // A Mode switch moved the tint on the day/night tile and the footnote; forget
+  // the snapshot gate and the footnote cache so they repaint. The reading and
+  // condition rode their shared text styles already.
+  static uint8_t shownGen = 0;
+  if (theme::generation() != shownGen) {
+    shownGen = theme::generation();
+    everShown = false;
+    shownFootnote[0] = '\0';
+  }
+
   const WeatherSnapshot &weather = model.weather;
   const FeedStatus &status = model.status(Feed::Weather);
 
@@ -208,12 +231,14 @@ void updateWeatherScreen(const AppModel &model) {
     // No glyph rather than a stale one: a sun left over from an hour ago is a
     // claim about the sky, and the screen has nothing to base it on.
     lv_obj_add_flag(glyph, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(glyphDisc, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(condition, format::UNKNOWN);
     clearTiles();
     return;
   }
 
   lv_obj_remove_flag(glyph, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_remove_flag(glyphDisc, LV_OBJ_FLAG_HIDDEN);
   lv_image_set_src(glyph, glyphFor(weather.condition(), weather.isDay));
   lv_label_set_text(condition, describe(weather.condition()));
 
