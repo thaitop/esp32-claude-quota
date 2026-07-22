@@ -28,7 +28,7 @@ ILI9341 + XPT2046 resistive touch), drawn with LVGL 9.
 | **Weather** | Temperature, apparent temperature, conditions, humidity | Weather |
 | **Crypto** | One coin's price, 24h change, dollar move and volume; BTC/ETH/BNB | Crypto |
 | **Stock** | Five tickers as a list, with a market-open badge | Stock |
-| **Setting** | Link, per-feed health, quota staleness, heap, uptime, backlight | — |
+| **Setting** | Link, per-feed health, quota staleness, heap, uptime, backlight, Config | — |
 
 ## The screens
 
@@ -84,10 +84,12 @@ placeholder just shows `--` on the Stock screen. Get the machine's IP with
 `ipconfig getifaddr en0` (macOS) or `hostname -I` (Linux) — prefer an IP over
 `.local`, and give it a DHCP reservation so the firmware need not be reflashed.
 
-`secrets.h` is gitignored. Everything else — poll intervals, timeouts, coins,
-tickers, colour thresholds, touch calibration — lives in the committed
-`firmware/src/config.h`. The token and TZ sit in `secrets.h` because the token
-is a credential, soft as it is.
+`secrets.h` is gitignored. Everything else — poll intervals, timeouts, colour
+thresholds, touch calibration — lives in the committed `firmware/src/config.h`.
+The token and TZ sit in `secrets.h` because the token is a credential, soft as
+it is. The values in `config.h`/`secrets.h` are the **factory defaults** for the
+weather location, coins and stocks; once flashed, those three can be changed on
+the device via [Config Mode](#config-mode) without reflashing.
 
 ## 2. Flash
 
@@ -283,8 +285,32 @@ seven days the firmware's ring holds.
 | Tap above the navbar | Force an immediate refresh of every feed |
 | Hold ~1s above the navbar | Blank the display (tap to wake) |
 
-The Setting screen is a readout, not an editor (apart from the backlight
-stepper). Changing configuration means reflashing.
+The Setting screen is mostly a readout, plus the backlight stepper and one
+button: **Config**, along the foot, opens [Config Mode](#config-mode). Most
+tunables still change only by reflashing; Config Mode is the exception for the
+three a person plausibly changes without a toolchain — the weather location, the
+tracked coins and the tracked stocks.
+
+## Config Mode
+
+Change the weather location, coins and stocks from a browser — no reflash.
+
+**Hold the Config button** on the Setting screen. The feeds stop, the device
+stands up a plain HTTP server, and the panel shows an address and a four-digit
+**PIN**:
+
+1. On a phone or laptop on the same LAN, open the address shown (e.g.
+   `http://192.168.1.42`) and enter the PIN.
+2. Type a city for the weather, and pick the coins and stocks from the menus.
+   The city is checked live against Open-Meteo; the coins and stocks are picked
+   from a built-in catalog, so their logos always match.
+3. **Save & reboot** writes the choices to the device's flash (NVS) and restarts
+   onto them; **Cancel** discards and reboots. To leave without a browser —
+   e.g. a mistaken tap — **hold a press anywhere on the panel** to exit unsaved.
+
+<p align="center">
+  <img src="docs/images/screen-settings.jpeg" alt="Config Mode page in a browser" width="360">
+</p>
 
 ## Colour thresholds
 
