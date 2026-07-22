@@ -105,7 +105,7 @@ void showConfigOverlay(const char *ip, const char *pin) {
   lv_obj_align(pinLabel, LV_ALIGN_TOP_MID, 0, 140);
 
   lv_obj_t *foot = ui::makeLabel(ov, &font_inter_12, theme::MUTED);
-  lv_label_set_text(foot, "Feeds paused. Saving reboots the device.");
+  lv_label_set_text(foot, "Feeds paused. Hold screen to exit without saving.");
   lv_obj_align(foot, LV_ALIGN_BOTTOM_MID, 0, -20);
 }
 
@@ -279,9 +279,25 @@ void loop() {
   // settings, once the browser asks for it.
   if (net::configPortalActive()) {
     net::configPortalService();
-    if (net::configPortalShouldReboot()) {
-      Serial.println("config saved, rebooting");
-      delay(200);  // let the final HTTP response flush before the reset
+
+    // The on-device escape hatch: a held press anywhere leaves Config Mode
+    // without saving, so a mistaken tap into it does not strand the device
+    // waiting for a browser. Held rather than tapped so a stray touch cannot
+    // drop out of a session someone is in the middle of. The reboot discards
+    // the draft, exactly as the browser's Cancel does.
+    static bool cfgWasDown = false;
+    static uint32_t cfgPressStart = 0;
+    lv_indev_t *indev = lv_indev_get_next(nullptr);
+    const bool down =
+        indev != nullptr && lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED;
+    if (down && !cfgWasDown) cfgPressStart = millis();
+    const bool heldToExit = down && millis() - cfgPressStart > LONG_PRESS_MS;
+    cfgWasDown = down;
+
+    if (heldToExit || net::configPortalShouldReboot()) {
+      Serial.println(heldToExit ? "config cancelled on device, rebooting"
+                                : "config saved, rebooting");
+      delay(200);  // let any final HTTP response flush before the reset
       ESP.restart();
     }
     delay(5);
