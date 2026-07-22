@@ -1,48 +1,13 @@
 #include "model.h"
 
-#include "config.h"
-
 // Host-compilable alongside model.h -- no Arduino headers here either.
-
-// The ids come from config.h, which is also where the request path is built
-// from them, so the URL asks for exactly the coins this table names.
-const char *coinId(Coin coin) {
-  switch (coin) {
-    case Coin::BTC: return CRYPTO_ID_BTC;
-    case Coin::ETH: return CRYPTO_ID_ETH;
-    case Coin::BNB: return CRYPTO_ID_BNB;
-    default:        return "";
-  }
-}
-
-const char *coinTicker(Coin coin) {
-  switch (coin) {
-    case Coin::BTC: return "BTC";
-    case Coin::ETH: return "ETH";
-    case Coin::BNB: return "BNB";
-    default:        return "--";
-  }
-}
-
-const char *coinName(Coin coin) {
-  switch (coin) {
-    case Coin::BTC: return "Bitcoin";
-    case Coin::ETH: return "Ethereum";
-    case Coin::BNB: return "BNB";
-    default:        return "--";
-  }
-}
-
-const char *stockSymbol(Ticker ticker) {
-  switch (ticker) {
-    case Ticker::AAPL: return "AAPL";
-    case Ticker::NVDA: return "NVDA";
-    case Ticker::TSLA: return "TSLA";
-    case Ticker::GOOG: return "GOOG";
-    case Ticker::MSFT: return "MSFT";
-    default:           return "--";
-  }
-}
+//
+// coinId()/coinTicker()/coinName()/stockSymbol() used to live here as
+// compile-time tables. They now read the runtime settings and so moved to
+// net/config_store.cpp, which is not host-compilable (it touches NVS) -- the
+// pure, host-compilable half is what stayed: the code below maps a fetched
+// weather code to a Screen's vocabulary and turns the enums into words, neither
+// of which depends on how the tracked coins or symbols are stored.
 
 // WMO 4677, as Open-Meteo reports it. The ranges rather than the individual
 // codes: 61, 63 and 65 are light, moderate and heavy rain, and the screen has

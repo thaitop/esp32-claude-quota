@@ -7,6 +7,7 @@
 #include "fonts/ui_fonts.h"
 #include "format.h"
 #include "theme.h"
+#include "logos.h"
 #include "ui_icons.h"
 #include "widgets.h"
 
@@ -46,6 +47,11 @@ constexpr int16_t BADGE_Y = 6;
 lv_obj_t *badge = nullptr;
 lv_obj_t *badgeLabel = nullptr;
 lv_obj_t *logos[(size_t)Ticker::Count] = {nullptr};
+// Which rows carry a flat silhouette that is retinted to TEXT -- the only ones a
+// Mode switch may re-recolour. Recolouring a colourful mark fills its box with a
+// solid block (runtime recolour ignores the alpha plane on a multi-colour
+// RGB565A8 image), so the colourful rows must be left alone. See ui/logos.
+bool logoRecolor[(size_t)Ticker::Count] = {false};
 lv_obj_t *priceLabels[(size_t)Ticker::Count] = {nullptr};
 lv_obj_t *pctLabels[(size_t)Ticker::Count] = {nullptr};
 
@@ -75,31 +81,29 @@ void paintBadge(MarketSession session) {
   }
 }
 
-// One logo per ticker, indexed by the Ticker enum so row i shows company i.
-const lv_image_dsc_t *logoFor(size_t i) {
-  switch ((Ticker)i) {
-  case Ticker::AAPL: return &logo_aapl;
-  case Ticker::NVDA: return &logo_nvda;
-  case Ticker::TSLA: return &logo_tsla;
-  case Ticker::GOOG: return &logo_goog;
-  default:           return &logo_msft;
-  }
+// The row's logo, looked up by symbol rather than by slot: Config Mode can put
+// any catalogued stock in any row, so the artwork follows the symbol (ui/logos)
+// and falls back to the generic glyph for a stock whose logo is not baked yet.
+const lv_image_dsc_t *logoFor(size_t i, bool &recolorToText) {
+  return ui::stockLogo(stockSymbol((Ticker)i), recolorToText);
 }
 
 void buildRow(lv_obj_t *parent, size_t i) {
   lv_obj_t *card =
       makeCard(parent, PAD, ROW_Y0 + (int16_t)i * ROW_PITCH, ROW_W, ROW_H);
 
+  bool recolor = false;
   lv_obj_t *logo = lv_image_create(card);
-  lv_image_set_src(logo, logoFor(i));
+  lv_image_set_src(logo, logoFor(i, recolor));
   lv_obj_align(logo, LV_ALIGN_LEFT_MID, SYM_X, 0);
   logos[i] = logo;
+  logoRecolor[i] = recolor;
 
-  // Every mark but Apple's carries its own brand colour and reads on either
-  // card. Apple's is a white silhouette baked for the dark card; on the pale
-  // Light card it turns white-on-white, so that one -- and only that one -- is
-  // recoloured to TEXT and re-tinted on a Mode switch below.
-  if ((Ticker)i == Ticker::AAPL) {
+  // The marks are monochrome silhouettes baked in TEXT, so each is recoloured
+  // to read on either card and re-tinted on a Mode switch below. (The old code
+  // did this for Apple alone; every catalogued mark now needs it, and the
+  // generic fallback does too.)
+  if (recolor) {
     lv_obj_set_style_image_recolor(logo, theme::colour(theme::TEXT), LV_PART_MAIN);
     lv_obj_set_style_image_recolor_opa(logo, LV_OPA_COVER, LV_PART_MAIN);
   }
@@ -153,9 +157,12 @@ void updateStockScreen(const AppModel &model) {
   if (theme::generation() != shownGen) {
     shownGen = theme::generation();
     for (size_t i = 0; i < (size_t)Ticker::Count; i++) shownValid[i] = false;
-    // Only Apple's mark is recoloured (see buildRow), so only it is re-tinted.
-    lv_obj_set_style_image_recolor(logos[(size_t)Ticker::AAPL],
-                                   theme::colour(theme::TEXT), LV_PART_MAIN);
+    // Re-tint only the flat silhouettes (see buildRow/ui/logos) to the new
+    // Mode's TEXT. The colourful marks must be left untouched -- recolouring one
+    // fills its box with a solid block.
+    for (size_t i = 0; i < (size_t)Ticker::Count; i++)
+      if (logoRecolor[i])
+        lv_obj_set_style_image_recolor(logos[i], theme::colour(theme::TEXT), LV_PART_MAIN);
     shownSession = (MarketSession)255;
   }
 

@@ -6,7 +6,7 @@
 #include <time.h>
 
 #include "../config.h"
-#include "../secrets.h"
+#include "config_store.h"
 #include "esp_sntp.h"
 
 namespace net {
@@ -64,7 +64,7 @@ bool syncClock() {
   if (synced) return true;
 
   char tz[24];
-  buildPosixTz(CLOCK_TZ, tz, sizeof(tz));
+  buildPosixTz(configClockTz(), tz, sizeof(tz));
   configTzTime(tz, NTP_SERVER);
 
   struct tm parts;
@@ -79,7 +79,8 @@ bool syncClock() {
   if (synced) {
     char stamp[20];
     strftime(stamp, sizeof(stamp), "%Y-%m-%d %H:%M:%S", &parts);
-    Serial.printf("clock synced from %s: %s %s (%s)\n", NTP_SERVER, stamp, CLOCK_TZ, tz);
+    Serial.printf("clock synced from %s: %s %s (%s)\n", NTP_SERVER, stamp,
+                  configClockTz(), tz);
   } else {
     Serial.printf("clock sync from %s failed, header stays blank\n", NTP_SERVER);
   }

@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 #include "../config.h"
-#include "../secrets.h"
+#include "config_store.h"
 #include "https.h"
 
 namespace net {
@@ -21,8 +21,9 @@ bool readFloat(JsonVariantConst value, float &out) {
 }  // namespace
 
 FetchOutcome fetchWeather(AppModel &model) {
-  char path[192];
-  snprintf(path, sizeof(path), WEATHER_PATH_FMT, WEATHER_LATITUDE, WEATHER_LONGITUDE);
+  char path[224];
+  snprintf(path, sizeof(path), WEATHER_PATH_FMT, configWeatherLat(),
+           configWeatherLon(), configWeatherTz());
 
   // Open-Meteo wraps the four numbers we want in units, a timezone name and an
   // elevation. The filter keeps the parsed document to the "current" object.

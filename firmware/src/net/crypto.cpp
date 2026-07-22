@@ -42,8 +42,16 @@ FetchOutcome fetchCrypto(AppModel &model) {
     filter[coinId((Coin)i)] = true;
   }
 
+  // Built from the runtime ids rather than a literal path: Config Mode can
+  // change which coins are tracked, and coinId() reads the same table the
+  // filter above and the labels on screen do, so the request cannot ask for a
+  // coin the screen is not showing.
+  char path[192];
+  snprintf(path, sizeof(path), CRYPTO_PATH_FMT, coinId(Coin::BTC),
+           coinId(Coin::ETH), coinId(Coin::BNB));
+
   JsonDocument doc;
-  const FetchOutcome outcome = fetchJson(CRYPTO_HOST, CRYPTO_PATH, doc, filter);
+  const FetchOutcome outcome = fetchJson(CRYPTO_HOST, path, doc, filter);
   if (outcome != FetchOutcome::Ok) {
     // The transport failed, so nothing in the response can be believed --
     // including the coins that were fine an hour ago.

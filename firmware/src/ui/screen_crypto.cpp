@@ -7,6 +7,7 @@
 #include "fonts/ui_fonts.h"
 #include "format.h"
 #include "theme.h"
+#include "logos.h"
 #include "ui_icons.h"
 #include "widgets.h"
 
@@ -114,25 +115,13 @@ char shownFootnote[64] = {0};
 // update() is recorded here, on the same pass that drew from it.
 const AppModel *source = nullptr;
 
-// The hero's badge, at the 48px the artwork is generated at.
-const lv_image_dsc_t *badgeFor(Coin coin) {
-  switch (coin) {
-    case Coin::BTC: return &coin_btc;
-    case Coin::ETH: return &coin_eth;
-    case Coin::BNB: return &coin_bnb;
-    default:        return &coin_btc;
-  }
-}
+// The hero's badge and the title's, looked up by the coin's id rather than its
+// slot: Config Mode can put any catalogued coin in any slot, so the artwork has
+// to follow the id (ui/logos), which falls back to the generic glyph for a coin
+// whose logo is not baked yet.
+const lv_image_dsc_t *badgeFor(Coin coin) { return coinLogo(coinId(coin)); }
 
-// The title's, at 26.
-const lv_image_dsc_t *titleBadgeFor(Coin coin) {
-  switch (coin) {
-    case Coin::BTC: return &coin_btc_hdr;
-    case Coin::ETH: return &coin_eth_hdr;
-    case Coin::BNB: return &coin_bnb_hdr;
-    default:        return &coin_btc_hdr;
-  }
-}
+const lv_image_dsc_t *titleBadgeFor(Coin coin) { return coinLogoHdr(coinId(coin)); }
 
 // Compared at the resolution the screen draws -- cents, hundredths of a
 // percent, and whole thousands of dollars of volume. Comparing the raw floats

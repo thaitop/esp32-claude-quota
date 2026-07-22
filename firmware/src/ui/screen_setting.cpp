@@ -53,6 +53,16 @@ constexpr int16_t PLUS_X = 282;
 constexpr int16_t THEME_ICON = 16;
 constexpr int16_t THEME_ICON_X = MINUS_X - 8 - THEME_ICON;
 
+// The Config button rides in the header between the title and the theme toggle.
+// A short label in a stepper-styled panel; tapping it hands off to Config Mode.
+// Sized to the gap the five-letter "Setting" leaves before the theme glyph at
+// THEME_ICON_X (174): x 116..164 clears both, and buildSettingScreen warns to
+// serial if the title ever grows into it.
+constexpr int16_t CFG_X = 116;
+constexpr int16_t CFG_W = 48;
+
+void (*configCallback)() = nullptr;
+
 lv_obj_t *brightnessLabel = nullptr;
 uint8_t shownBrightness = 0;
 
@@ -205,21 +215,44 @@ void buildThemeToggle(lv_obj_t *parent) {
   lv_obj_add_event_cb(hit, onThemePressed, LV_EVENT_CLICKED, nullptr);
 }
 
+void onConfigPressed(lv_event_t *) {
+  if (configCallback != nullptr) configCallback();
+}
+
+// The one control on a screen full of readouts, styled like the brightness
+// steppers so it reads as a control and not a value. Its own event rather than a
+// card gesture, because it does not sit over the cards.
+void buildConfigButton(lv_obj_t *parent) {
+  lv_obj_t *button = makePanel(parent, CFG_W, BTN_H, 8, theme::CARD);
+  lv_obj_set_pos(button, CFG_X, BTN_Y);
+  lv_obj_add_style(button, theme::borderStyle(theme::CARD_EDGE), LV_PART_MAIN);
+  lv_obj_set_style_border_width(button, 1, LV_PART_MAIN);
+  lv_obj_set_style_border_opa(button, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_add_flag(button, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(button, onConfigPressed, LV_EVENT_CLICKED, nullptr);
+
+  lv_obj_t *label = makeLabel(button, &font_inter_12, theme::ACCENT);
+  lv_label_set_text(label, "Config");
+  lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+}
+
 }  // namespace
 
-void buildSettingScreen(lv_obj_t *parent) {
+void buildSettingScreen(lv_obj_t *parent, void (*onConfig)()) {
+  configCallback = onConfig;
+
   lv_obj_t *title = makeTitle(parent, "Setting", &icon_setting_hdr);
 
+  buildConfigButton(parent);
   buildThemeToggle(parent);
 
-  // The title and the toggle share the band; if the title ever reaches into the
-  // glyph the tripwire says so, the same way warnIfOverflowing guards the rows
-  // below.
+  // The title, the Config button and the toggle share the band; if the title
+  // ever reaches into the button the tripwire says so, the same way
+  // warnIfOverflowing guards the rows below.
   lv_obj_update_layout(parent);
-  if (lv_obj_get_x(title) + lv_obj_get_width(title) > THEME_ICON_X) {
-    Serial.printf("setting title runs to %d, theme toggle starts at %d\n",
-                  (int)(lv_obj_get_x(title) + lv_obj_get_width(title)),
-                  (int)THEME_ICON_X);
+  if (lv_obj_get_x(title) + lv_obj_get_width(title) > CFG_X) {
+    Serial.printf("setting title runs to %d, config button starts at %d\n",
+                  (int)(lv_obj_get_x(title) + lv_obj_get_width(title)), (int)CFG_X);
   }
 
   makeStepButton(parent, MINUS_X, "-", -1);

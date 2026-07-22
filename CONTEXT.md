@@ -127,3 +127,35 @@ The mapping from a utilization figure to its display colour — green while
 comfortable, amber while warning, red while alarming. Shared by a window's
 progress bar and its reset countdown so the pair reads as one object.
 _Avoid_: threshold, colour scale, gradient
+
+## Configuration
+
+**Setting** (the tunables, not the Screen):
+The installation values that describe *this* display rather than repo-wide
+behaviour: the Weather location and its two timezones, the tracked coin ids, the
+tracked stock symbols. Held in NVS by `config_store`, defaulting to the
+`config.h`/`secrets.h` constants. Distinct from the Setting Screen, which shows
+health and now also carries the button into Config Mode.
+_Avoid_: config, preferences, options
+
+**Config Mode**:
+The state the device enters from the Setting Screen's Config button: feeds
+stopped, a LAN web server up, an address and a PIN on the panel. A browser edits
+the Settings and the device reboots onto them. The one editor in an otherwise
+reflash-to-change system — see ADR-0005.
+_Avoid_: setup mode, admin, portal (the code calls the object a portal; the
+state the user is in is Config Mode)
+
+**Catalog** (Config Mode):
+The curated set of coins and stocks the pickers offer. Coins and stocks are
+chosen from it, not typed, because their logos are baked into the firmware and
+keyed by id/symbol — a catalogued item has (or can have) a matching mark. Held
+in `config_store`.
+_Avoid_: list, options, presets
+
+**Validation** (Config Mode):
+Confirming the one free-text field — the city — against Open-Meteo geocoding
+before it is kept. Runs with the feeds stopped, one fetch at a time, so it never
+breaks the one-connection rule (ADR-0003/0005). Coins and stocks need none: a
+catalog pick is known-good. A city that fails keeps the previous location.
+_Avoid_: check, verify, lookup

@@ -15,6 +15,8 @@
 #include "display.h"
 #include "model.h"
 #include "net/bridge.h"
+#include "net/config_portal.h"
+#include "net/config_store.h"
 #include "net/crypto.h"
 #include "net/market.h"
 #include "net/poller.h"
@@ -66,6 +68,55 @@ void refreshActiveScreen(uint32_t nowMs) {
     case ui::Screen::Setting: ui::updateSettingScreen(model, nowMs); break;
     default: break;
   }
+}
+
+// The panel side of Config Mode: a full-screen overlay on LVGL's top layer,
+// above whatever screen was showing, carrying the address and PIN a browser
+// needs. Built on entry and never torn down -- Config Mode ends in a reboot, so
+// the overlay lives exactly as long as the web server does.
+void showConfigOverlay(const char *ip, const char *pin) {
+  lv_obj_t *ov = lv_obj_create(lv_layer_top());
+  lv_obj_remove_style_all(ov);
+  lv_obj_set_size(ov, display::WIDTH, display::HEIGHT);
+  lv_obj_set_pos(ov, 0, 0);
+  lv_obj_add_style(ov, theme::bgStyle(theme::BG), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ov, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_remove_flag(ov, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(ov, LV_OBJ_FLAG_CLICKABLE);  // swallow taps meant for the screen
+
+  lv_obj_t *heading = ui::makeLabel(ov, &font_inter_22_bold, theme::TEXT);
+  lv_label_set_text(heading, "Config Mode");
+  lv_obj_align(heading, LV_ALIGN_TOP_MID, 0, 26);
+
+  lv_obj_t *hint = ui::makeLabel(ov, &font_inter_12, theme::MUTED);
+  lv_label_set_text(hint, "Open this address on the same WiFi:");
+  lv_obj_align(hint, LV_ALIGN_TOP_MID, 0, 70);
+
+  char url[32];
+  snprintf(url, sizeof(url), "http://%s/", ip);
+  lv_obj_t *addr = ui::makeLabel(ov, &font_inter_22_bold, theme::ACCENT);
+  lv_label_set_text(addr, url);
+  lv_obj_align(addr, LV_ALIGN_TOP_MID, 0, 92);
+
+  char pinText[16];
+  snprintf(pinText, sizeof(pinText), "PIN  %s", pin);
+  lv_obj_t *pinLabel = ui::makeLabel(ov, &font_inter_22_bold, theme::TEXT);
+  lv_label_set_text(pinLabel, pinText);
+  lv_obj_align(pinLabel, LV_ALIGN_TOP_MID, 0, 140);
+
+  lv_obj_t *foot = ui::makeLabel(ov, &font_inter_12, theme::MUTED);
+  lv_label_set_text(foot, "Feeds paused. Saving reboots the device.");
+  lv_obj_align(foot, LV_ALIGN_BOTTOM_MID, 0, -20);
+}
+
+// Stops the feeds by taking the loop down the Config Mode path, stands up the
+// web server, and shows the overlay. recordLink() first so the IP on screen is
+// current -- Config Mode is reached by a tap, which can happen long after boot.
+void enterConfigMode() {
+  recordLink();
+  if (!model.wifiAssociated) return;  // no LAN, no server; the tap is a no-op
+  net::configPortalBegin(model.ipAddress);
+  showConfigOverlay(model.ipAddress, net::configPortalPin());
 }
 
 void connectWifi() {
@@ -139,6 +190,11 @@ void setup() {
   delay(200);
   Serial.printf("\nboot, heap=%u\n", (unsigned)ESP.getFreeHeap());
 
+  // Before any feed reads a location, a coin id or a symbol, and before the
+  // clock sync reads the timezone: load the installation settings from NVS,
+  // falling back to the config.h/secrets.h defaults on a fresh device.
+  net::configBegin();
+
   if (!display::begin()) {
     Serial.println("display bring-up failed, halting");
     while (true) delay(1000);
@@ -165,7 +221,7 @@ void setup() {
   ui::buildWeatherScreen(ui::page(ui::Screen::Weather));
   ui::buildCryptoScreen(ui::page(ui::Screen::Crypto));
   ui::buildStockScreen(ui::page(ui::Screen::Stock));
-  ui::buildSettingScreen(ui::page(ui::Screen::Setting));
+  ui::buildSettingScreen(ui::page(ui::Screen::Setting), enterConfigMode);
   ui::updateClaudeScreen(model);
   display::tick();
 
@@ -215,6 +271,23 @@ void loop() {
   static ui::Screen lastScreen = ui::Screen::Count;
 
   display::tick();
+
+  // Config Mode owns the loop while it is up: the feeds are stopped so no TLS
+  // fetch can overlap the web server's validation fetches (ADR-0003/0005), and
+  // the touch gestures are suppressed because the overlay is the only thing on
+  // screen. It ends the one way it can -- a reboot onto the freshly saved
+  // settings, once the browser asks for it.
+  if (net::configPortalActive()) {
+    net::configPortalService();
+    if (net::configPortalShouldReboot()) {
+      Serial.println("config saved, rebooting");
+      delay(200);  // let the final HTTP response flush before the reset
+      ESP.restart();
+    }
+    delay(5);
+    return;
+  }
+
   handleTouch();
 
   const uint32_t now = millis();

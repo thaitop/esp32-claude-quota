@@ -55,6 +55,13 @@ LILAC = "#CDBCEC"   # PILL_SESSION_TX, reads as moonlight
 RAIN = "#5B9BD5"
 # Brand marks keep their own colours.
 BTC, ETH, BNB = "#F7931A", "#627EEA", "#F3BA2F"
+# The catalogued coins added for Config Mode. Their drop SVGs carry their own
+# colours (no currentColor), so render() ships them untinted and these hexes are
+# documentation only -- they take effect solely if a drop is ever switched to a
+# currentColor mark. Config Mode's Crypto screen does not recolour coins, so each
+# drop is expected to read on both the dark and the light hero card.
+SOL, XRP, ADA, DOGE = "#14F195", "#23292F", "#0133AD", "#C2A633"
+DOT, LTC, LINK, TRX, AVAX = "#E6007A", "#345D9D", "#375BD2", "#EF0027", "#E84142"
 
 # kind: "stroke" (Lucide/custom -- recolour the stroke) or
 #       "fill"   (Simple Icons -- recolour the fill).
@@ -106,6 +113,15 @@ MANIFEST = [
     ("coin_btc",  "brand/bitcoin.svg",               48, 48, BTC,    "fill"),
     ("coin_eth",  "brand/ethereum.svg",              48, 48, ETH,    "fill"),
     ("coin_bnb",  "brand/binance.svg",               48, 48, BNB,    "fill"),
+    ("coin_sol",  "brand/bitcoin.svg",               48, 48, SOL,    "fill"),
+    ("coin_xrp",  "brand/bitcoin.svg",               48, 48, XRP,    "fill"),
+    ("coin_ada",  "brand/bitcoin.svg",               48, 48, ADA,    "fill"),
+    ("coin_doge", "brand/bitcoin.svg",               48, 48, DOGE,   "fill"),
+    ("coin_dot",  "brand/bitcoin.svg",               48, 48, DOT,    "fill"),
+    ("coin_ltc",  "brand/bitcoin.svg",               48, 48, LTC,    "fill"),
+    ("coin_link", "brand/bitcoin.svg",               48, 48, LINK,   "fill"),
+    ("coin_trx",  "brand/bitcoin.svg",               48, 48, TRX,    "fill"),
+    ("coin_avax", "brand/bitcoin.svg",               48, 48, AVAX,   "fill"),
 
     ("icon_weekly_hdr",  "lucide/calendar-days.svg", 26, 26, ACCENT, "stroke"),
     ("icon_weather_hdr", "lucide/cloud-sun.svg",     26, 26, ACCENT, "stroke"),
@@ -116,6 +132,15 @@ MANIFEST = [
     ("coin_btc_hdr", "brand/bitcoin.svg",            26, 26, BTC,    "fill"),
     ("coin_eth_hdr", "brand/ethereum.svg",           26, 26, ETH,    "fill"),
     ("coin_bnb_hdr", "brand/binance.svg",            26, 26, BNB,    "fill"),
+    ("coin_sol_hdr",  "brand/bitcoin.svg",           26, 26, SOL,    "fill"),
+    ("coin_xrp_hdr",  "brand/bitcoin.svg",           26, 26, XRP,    "fill"),
+    ("coin_ada_hdr",  "brand/bitcoin.svg",           26, 26, ADA,    "fill"),
+    ("coin_doge_hdr", "brand/bitcoin.svg",           26, 26, DOGE,   "fill"),
+    ("coin_dot_hdr",  "brand/bitcoin.svg",           26, 26, DOT,    "fill"),
+    ("coin_ltc_hdr",  "brand/bitcoin.svg",           26, 26, LTC,    "fill"),
+    ("coin_link_hdr", "brand/bitcoin.svg",           26, 26, LINK,   "fill"),
+    ("coin_trx_hdr",  "brand/bitcoin.svg",           26, 26, TRX,    "fill"),
+    ("coin_avax_hdr", "brand/bitcoin.svg",           26, 26, AVAX,   "fill"),
 
     # Per-ticker row logos for the Stock screen. Drop-only; the vendored path is
     # a placeholder. Brand marks ship as solid black, so "mono" tints them white
@@ -125,6 +150,13 @@ MANIFEST = [
     ("logo_tsla", "brand/bitcoin.svg",               20, 20, TEXT,   "mono"),
     ("logo_goog", "brand/bitcoin.svg",               20, 20, TEXT,   "mono"),
     ("logo_msft", "brand/bitcoin.svg",               20, 20, TEXT,   "mono"),
+    ("logo_amzn", "brand/bitcoin.svg",               20, 20, TEXT,   "mono"),
+    ("logo_meta", "brand/bitcoin.svg",               20, 20, TEXT,   "mono"),
+    ("logo_nflx", "brand/bitcoin.svg",               20, 20, TEXT,   "mono"),
+    ("logo_amd",  "brand/bitcoin.svg",               20, 20, TEXT,   "mono"),
+    ("logo_intc", "brand/bitcoin.svg",               20, 20, TEXT,   "mono"),
+    ("logo_coin", "brand/bitcoin.svg",               20, 20, TEXT,   "mono"),
+    ("logo_pypl", "brand/bitcoin.svg",               20, 20, TEXT,   "mono"),
 ]
 
 

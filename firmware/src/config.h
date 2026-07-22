@@ -24,11 +24,21 @@
 
 // Open-Meteo. Free, no API key. The field list is kept minimal so the response
 // stays a few hundred bytes -- see ADR-0003 on why heap headroom matters here.
+//
+// The timezone is now a runtime value (Config Mode can change the location, and
+// with it the zone), so it is a `%s` the feed fills from config_store rather
+// than a literal concatenated here. `%.4f` twice then the zone: lat, lon, tz.
 #define WEATHER_HOST "api.open-meteo.com"
-#define WEATHER_PATH_FMT                                                    \
-  "/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,"       \
-  "apparent_temperature,relative_humidity_2m,is_day,weather_code&timezone=" \
-  WEATHER_TZ
+#define WEATHER_PATH_FMT                                              \
+  "/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m," \
+  "apparent_temperature,relative_humidity_2m,is_day,weather_code&timezone=%s"
+
+// Open-Meteo geocoding, for turning a city name typed in Config Mode into the
+// coordinates and IANA zone the Weather Feed wants. Not a feed -- reached once,
+// while validating, with the feeds stopped (ADR-0005). `%s` is the URL-escaped
+// name; count=1 takes the top match.
+#define GEOCODE_HOST "geocoding-api.open-meteo.com"
+#define GEOCODE_PATH_FMT "/v1/search?name=%s&count=1&language=en&format=json"
 
 // CoinGecko simple/price. Free tier, no API key.
 #define CRYPTO_HOST "api.coingecko.com"
@@ -45,10 +55,14 @@
 // is ever in flight at a time (ADR-0003) -- so they would also arrive up to two
 // poll intervals apart and the screen would compare coins read at different
 // moments.
-#define CRYPTO_PATH                                                      \
-  "/api/v3/simple/price?ids=" CRYPTO_ID_BTC "," CRYPTO_ID_ETH ","        \
-  CRYPTO_ID_BNB "&vs_currencies=usd&include_24hr_change=true"            \
-  "&include_24hr_vol=true"
+//
+// The ids are now runtime (Config Mode can change which coins are tracked from
+// a catalog), so the feed builds this with snprintf from config_store's ids
+// rather than the path being a literal. `%s` once per coin, comma-joined --
+// keep the count in step with Coin::Count if a coin slot is ever added.
+#define CRYPTO_PATH_FMT                                                   \
+  "/api/v3/simple/price?ids=%s,%s,%s&vs_currencies=usd"                   \
+  "&include_24hr_change=true&include_24hr_vol=true"
 
 // Finnhub /quote. Free tier: 60 requests/minute, one symbol per request, and
 // no historical candles -- which is why the Stock screen shows a price and a
