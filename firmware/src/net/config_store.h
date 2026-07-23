@@ -41,6 +41,11 @@ const char *configClockTz();
 const char *configWifiSsid();
 const char *configWifiPass();
 
+// The bridge address the quota feed fetches from, as "http://host:port". Config
+// Mode is the only writer; bridge.cpp reads it in place of the old compile-time
+// BRIDGE_BASE_URL macro.
+const char *configBridgeUrl();
+
 // A working copy Config Mode mutates as fields validate, seeded from the live
 // settings when the portal opens and committed to NVS by configCommit(). Held
 // here rather than in the portal so the accessors and the draft cannot drift
@@ -60,6 +65,12 @@ struct Settings {
   // are the SSID/PSK maxima WPA2 allows, plus the terminator.
   char wifiSsid[33];
   char wifiPass[64];
+  // The Mac running quota_bridge.py, as a canonical "http://host:port". Editable
+  // in Config Mode (unlike the direct feeds' hosts, which are fixed in config.h)
+  // so a moved Mac is a portal edit, not a reflash. BRIDGE_BASE_URL in secrets.h
+  // is only the factory default. 96 holds an IP:port comfortably and leaves room
+  // for a .local hostname, so a future mDNS path needs no schema change.
+  char bridgeUrl[96];
 };
 
 // A copy of the live settings, for Config Mode to edit without touching what

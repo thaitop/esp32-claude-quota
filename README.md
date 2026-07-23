@@ -82,9 +82,9 @@ Edit `firmware/src/secrets.h`:
 
 Get the machine's IP with `ipconfig getifaddr en0` (macOS) or `hostname -I`
 (Linux). The Finnhub token is optional — leaving the placeholder just shows `--`
-on the Stock screen. Weather, coins and stocks can also be changed on the device
-later via [Config Mode](#config-mode), and the **WiFi** via
-[WiFi Setup](#wifi-setup) — both without a reflash. The values here are the
+on the Stock screen. Weather, coins, stocks and the **bridge address** can also
+be changed on the device later via [Config Mode](#config-mode), and the **WiFi**
+via [WiFi Setup](#wifi-setup) — all without a reflash. The values here are the
 factory defaults the first boot uses; once changed on the device they live in
 NVS and editing this file changes nothing until a fresh flash.
 
@@ -192,12 +192,23 @@ unit with `Restart=always`. Windows: Task Scheduler at logon.
 
 ## Config Mode
 
-Change the weather location, coins and stocks from a browser — no reflash.
+Change the weather location, coins, stocks and the bridge address from a
+browser — no reflash.
 
 **Hold the Config button** on the Setting screen. The panel shows an address and
 a four-digit **PIN**. Open the address on a phone or laptop on the same LAN,
-enter the PIN, pick your city / coins / stocks, then **Save & reboot**. To leave
-without a browser, hold a press anywhere on the panel to exit unsaved.
+enter the PIN, pick your city / coins / stocks, set the **Bridge** address, then
+**Save & reboot**. To leave without a browser, hold a press anywhere on the panel
+to exit unsaved.
+
+The **Bridge** field takes the Claude Code machine's address — a bare IP
+(`192.168.1.20`) is enough; `http://` and the `:8787` port are filled in for
+you. On blur the device fetches `/quota` off it and confirms the reply is
+actually the bridge: a green ✓ means it reached it, a red ✗ (`no response`,
+`HTTP 404`, `not the bridge`) means it did not. **Only a green address is
+saved** — a wrong or unreachable one leaves the previous bridge in place, so the
+Claude machine must be running when you set this. Moving the Mac later is a
+portal edit here, not a reflash (give it a DHCP reservation to avoid even that).
 
 <p align="center">
   <img src="docs/images/screen-settings.jpeg" alt="Config Mode page in a browser" width="360">

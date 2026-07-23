@@ -11,6 +11,16 @@
 #include <cstdint>
 
 // ---------------------------------------------------------------------------
+// Firmware
+// ---------------------------------------------------------------------------
+
+// Shown on the Setting screen so a glance tells which build is running. Bump by
+// hand on a release -- the git history is the real record, this is the number a
+// user reads off the panel. Keep it a short semver so it fits the half-row it
+// shares with the Config button.
+#define FIRMWARE_VERSION "1.0.1"
+
+// ---------------------------------------------------------------------------
 // Bridge
 // ---------------------------------------------------------------------------
 

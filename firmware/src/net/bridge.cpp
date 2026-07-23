@@ -7,6 +7,7 @@
 
 #include "../config.h"
 #include "../secrets.h"
+#include "config_store.h"
 #include "poller.h"
 
 namespace net {
@@ -53,7 +54,7 @@ FetchOutcome fetchQuota(AppModel &model) {
   http.setConnectTimeout(HTTP_TIMEOUT_MS);
   http.setReuse(false);
 
-  const String url = String(BRIDGE_BASE_URL) + BRIDGE_PATH_QUOTA;
+  const String url = String(configBridgeUrl()) + BRIDGE_PATH_QUOTA;
   if (!http.begin(url)) {
     clearQuota(model.quota);
     return FetchOutcome::Unreachable;
@@ -114,7 +115,7 @@ FetchOutcome fetchHistory(AppModel &model) {
   http.setConnectTimeout(HTTP_TIMEOUT_MS);
   http.setReuse(false);
 
-  const String url = String(BRIDGE_BASE_URL) + BRIDGE_PATH_HISTORY;
+  const String url = String(configBridgeUrl()) + BRIDGE_PATH_HISTORY;
   if (!http.begin(url)) return FetchOutcome::Unreachable;
 
   const int status = http.GET();

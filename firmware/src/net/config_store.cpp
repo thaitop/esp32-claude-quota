@@ -28,7 +28,7 @@ constexpr char NVS_KEY_BLOB[] = "settings";
 // build is ignored rather than reinterpreted field-for-field into garbage. The
 // device then comes up on defaults, which is the safe direction: a stale coin
 // id shows Unknown, it does not point a request somewhere unexpected.
-constexpr uint32_t SETTINGS_VERSION = 2;  // v2 added wifiSsid/wifiPass
+constexpr uint32_t SETTINGS_VERSION = 3;  // v2 added wifiSsid/wifiPass; v3 added bridgeUrl
 
 struct StoredSettings {
   uint32_t version;
@@ -88,6 +88,7 @@ void loadDefaults(Settings &out) {
   }
   copyField(out.wifiSsid, sizeof(out.wifiSsid), WIFI_SSID);
   copyField(out.wifiPass, sizeof(out.wifiPass), WIFI_PASSWORD);
+  copyField(out.bridgeUrl, sizeof(out.bridgeUrl), BRIDGE_BASE_URL);
 }
 
 }  // namespace
@@ -119,6 +120,7 @@ const char *configWeatherTz() { return live.weatherTz; }
 const char *configClockTz() { return live.clockTz; }
 const char *configWifiSsid() { return live.wifiSsid; }
 const char *configWifiPass() { return live.wifiPass; }
+const char *configBridgeUrl() { return live.bridgeUrl; }
 
 Settings configDraft() { return live; }
 

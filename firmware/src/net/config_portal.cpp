@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <HTTPClient.h>
 #include <WebServer.h>
 #include <WiFi.h>
 #include <cctype>
@@ -61,6 +62,10 @@ cursor:pointer;margin:6px 6px 0 0}
 <div id="coins"></div>
 <h2>Stocks</h2>
 <div id="stocks"></div>
+<h2>Bridge (Claude data)</h2>
+<div class="row"><label>Address</label>
+<input id="bridge" placeholder="your Mac's IP, e.g. 192.168.1.20"><span class="st" id="s_bridge"></span></div>
+<div class="msg" id="m_bridge"></div>
 <div style="margin-top:18px">
 <button class="pri" onclick="saveAll()">Save &amp; reboot</button>
 <button class="sec" onclick="cancel()">Cancel</button></div>
@@ -84,6 +89,8 @@ async function loadState(){
 const s=await(await fetch("/state?t="+tok)).json();
 $("city").value="";
 $("m_city").textContent="now: "+s.lat.toFixed(3)+","+s.lon.toFixed(3)+"  "+s.wtz+"  "+s.ctz;
+$("bridge").value="";
+$("m_bridge").textContent="now: "+s.bridge;
 const cd=$("coins");cd.innerHTML="";
 s.coins.forEach((id,i)=>{cd.insertAdjacentHTML("beforeend",
 `<div class="row"><label>Coin ${i+1}</label>
@@ -107,6 +114,21 @@ $("m_city").textContent=st.error||"not found";$("m_city").className="msg err";}
 return;}
 $("m_city").textContent="timed out";$("m_city").className="msg err";}
 $("city").addEventListener("blur",e=>validateCity(e.target.value));
+async function validateBridge(value){
+if(!value.trim()){$("s_bridge").textContent="";$("m_bridge").textContent="";return;}
+$("s_bridge").textContent="…";$("m_bridge").textContent="checking…";$("m_bridge").className="msg";
+const r=await post("/validate",{type:"bridge",value:value});
+if(r.status==409){$("m_bridge").textContent="busy, try again";return;}
+for(let i=0;i<40;i++){await new Promise(z=>setTimeout(z,400));
+const st=await(await fetch("/status?t="+tok)).json();
+if(st.state=="pending")continue;
+if(st.state=="ok"){$("s_bridge").textContent="✓";$("s_bridge").className="st ok";
+$("m_bridge").textContent=st.result;$("m_bridge").className="msg ok";}
+else{$("s_bridge").textContent="✗";$("s_bridge").className="st err";
+$("m_bridge").textContent=st.error||"unreachable";$("m_bridge").className="msg err";}
+return;}
+$("m_bridge").textContent="timed out";$("m_bridge").className="msg err";}
+$("bridge").addEventListener("blur",e=>validateBridge(e.target.value));
 async function saveAll(){
 $("foot").textContent="saving…";
 const body={};
@@ -130,17 +152,17 @@ char pin[5] = {0};
 char token[9] = {0};
 Settings draft;
 
-// One queued validation. The only field that still needs one is the city: the
-// coins and stocks are picked from a catalog of known-good ids/symbols (no typo
-// to catch), so they are applied straight from the catalog at save time. The
-// city is free text turned into coordinates, so it is confirmed against
-// Open-Meteo. Set by /validate, run by service() between clients so the
-// outbound TLS never overlaps an inbound request.
-enum class Job : uint8_t { None, City };
+// One queued validation. Two free-text fields need one: the city (turned into
+// coordinates, confirmed against Open-Meteo) and the bridge address (confirmed
+// by actually fetching /quota off it). The coins and stocks are catalog picks
+// with no typo to catch, so they are applied straight at save time. Set by
+// /validate, run by service() between clients so the outbound request never
+// overlaps an inbound one.
+enum class Job : uint8_t { None, City, Bridge };
 enum class JobState : uint8_t { Idle, Pending, Ok, Fail };
 Job jobType = Job::None;
 JobState jobState = JobState::Idle;
-char jobValue[48] = {0};
+char jobValue[64] = {0};
 char jobResult[96] = {0};
 char jobError[48] = {0};
 
@@ -258,12 +280,101 @@ bool runCity(const char *city) {
   return true;
 }
 
+// Turns whatever the user typed into a canonical "http://host:port". Accepts a
+// bare host, host:port, or a full URL; forces the http scheme (the bridge has
+// no TLS) and defaults the port to the bridge's 8787. Returns false if no host
+// survives -- reachability is the real check, this just gets the shape right.
+bool normalizeBridgeUrl(const char *in, char *out, size_t n) {
+  while (*in == ' ' || *in == '\t') in++;
+
+  // Drop a scheme if one was typed; the bridge is always plain http.
+  if (strncasecmp(in, "http://", 7) == 0)
+    in += 7;
+  else if (strncasecmp(in, "https://", 8) == 0)
+    in += 8;
+
+  // Copy host[:port], stopping at the first path/query/space -- a pasted URL
+  // with a trailing "/quota" or "/" must not leak into the stored base.
+  char hostport[80];
+  size_t o = 0;
+  for (; *in && *in != '/' && *in != '?' && *in != ' ' && o + 1 < sizeof(hostport); in++)
+    hostport[o++] = *in;
+  hostport[o] = '\0';
+  if (o == 0) return false;
+
+  // Split off a port if present; default to the bridge's otherwise.
+  const char *port = "8787";
+  char *colon = strrchr(hostport, ':');
+  if (colon) {
+    *colon = '\0';
+    port = colon + 1;
+    if (*port == '\0') return false;  // trailing colon, no port
+  }
+  if (hostport[0] == '\0') return false;  // ":8787" with no host
+
+  snprintf(out, n, "http://%s:%s", hostport, port);
+  return true;
+}
+
+// Normalizes the typed address, then fetches /quota off it. Green only on HTTP
+// 200 whose body carries the bridge's own "session" and "weekly" objects -- a
+// stray webserver at that IP answers 200 but not with those, so it cannot pass.
+// On success the canonical URL lands in the draft; /save persists it with the
+// rest. Plain HTTPClient, not fetchJson: the bridge is http, not TLS.
+bool runBridge(const char *value) {
+  char url[96];
+  if (!normalizeBridgeUrl(value, url, sizeof(url))) {
+    snprintf(jobError, sizeof(jobError), "not a valid address");
+    return false;
+  }
+
+  char probe[128];
+  snprintf(probe, sizeof(probe), "%s%s", url, BRIDGE_PATH_QUOTA);
+
+  HTTPClient http;
+  http.setTimeout(HTTP_TIMEOUT_MS);
+  http.setConnectTimeout(HTTP_TIMEOUT_MS);
+  http.setReuse(false);
+  if (!http.begin(probe)) {
+    snprintf(jobError, sizeof(jobError), "bad address");
+    return false;
+  }
+
+  const int status = http.GET();
+  if (status != HTTP_CODE_OK) {
+    http.end();
+    if (status < 0)
+      snprintf(jobError, sizeof(jobError), "no response");
+    else
+      snprintf(jobError, sizeof(jobError), "HTTP %d", status);
+    return false;
+  }
+
+  JsonDocument filter;
+  filter["session"] = true;
+  filter["weekly"] = true;
+  JsonDocument doc;
+  const DeserializationError err =
+      deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
+  http.end();
+  if (err || doc["session"].isNull() || doc["weekly"].isNull()) {
+    snprintf(jobError, sizeof(jobError), "not the bridge");
+    return false;
+  }
+
+  strncpy(draft.bridgeUrl, url, sizeof(draft.bridgeUrl) - 1);
+  draft.bridgeUrl[sizeof(draft.bridgeUrl) - 1] = '\0';
+  snprintf(jobResult, sizeof(jobResult), "reached %s", url);
+  return true;
+}
+
 void runPendingJob() {
   jobResult[0] = '\0';
   jobError[0] = '\0';
   bool ok = false;
   switch (jobType) {
     case Job::City: ok = runCity(jobValue); break;
+    case Job::Bridge: ok = runBridge(jobValue); break;
     default: break;
   }
   jobState = ok ? JobState::Ok : JobState::Fail;
@@ -293,6 +404,7 @@ void handleState() {
   out["lon"] = draft.weatherLon;
   out["wtz"] = draft.weatherTz;
   out["ctz"] = draft.clockTz;
+  out["bridge"] = draft.bridgeUrl;
   // The current selection per slot: the id the coin dropdown should preselect,
   // and the symbol the stock dropdown should.
   JsonArray coins = out["coins"].to<JsonArray>();
@@ -336,13 +448,18 @@ void handleValidate() {
   if (jobState == JobState::Pending)
     return server.send(409, "application/json", "{\"state\":\"busy\"}");
 
-  // Only the city is validated on the wire; coins and stocks are catalog picks.
-  if (server.arg("type") != "city")
+  // The two free-text fields validate on the wire; coins and stocks are catalog
+  // picks. Anything else is a bug in the page, not a value to probe.
+  const String type = server.arg("type");
+  if (type == "city")
+    jobType = Job::City;
+  else if (type == "bridge")
+    jobType = Job::Bridge;
+  else
     return server.send(400, "application/json", "{\"error\":\"type\"}");
   strncpy(jobValue, server.arg("value").c_str(), sizeof(jobValue) - 1);
   jobValue[sizeof(jobValue) - 1] = '\0';
 
-  jobType = Job::City;
   jobState = JobState::Pending;
   server.send(202, "application/json", "{\"state\":\"pending\"}");
 }

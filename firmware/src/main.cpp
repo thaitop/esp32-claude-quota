@@ -286,11 +286,11 @@ void setup() {
   lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 
-  // The SSID now comes from NVS (WiFi Setup can change it), the bridge URL is
-  // still compiled in. Both are pointers into storage that outlives setup(), so
-  // the model can carry them rather than the Setting screen reaching for them.
+  // Both now come from NVS -- WiFi Setup can change the SSID, Config Mode the
+  // bridge URL. Both are pointers into storage that outlives setup(), so the
+  // model can carry them rather than the Setting screen reaching for them.
   model.ssid = net::configWifiSsid();
-  model.bridgeUrl = BRIDGE_BASE_URL;
+  model.bridgeUrl = net::configBridgeUrl();
 
   ui::buildShell(screen);
   ui::buildClaudeScreen(ui::page(ui::Screen::Claude));

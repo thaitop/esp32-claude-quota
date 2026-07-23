@@ -63,13 +63,19 @@ constexpr int16_t PLUS_X = 282;
 constexpr int16_t THEME_ICON = 16;
 constexpr int16_t THEME_ICON_X = MINUS_X - 8 - THEME_ICON;
 
-// The Config button: full width along the foot, above the navbar. Styled like a
-// stepper (card fill, accent label) so it reads as a control, sized as the
-// primary action a glance is looking for.
+// The foot row, above the navbar, is split in two: the firmware version on the
+// left, the Config button on the right. The button gives up its old full width
+// so a glance can read the running build without opening anything; half the foot
+// is still the largest, lowest target on the screen, which a resistive panel is
+// happy with. Version left / action right, each half of the old span.
 constexpr int16_t CFG_Y = 174;
 constexpr int16_t CFG_H = 26;
-constexpr int16_t CFG_X = 8;
-constexpr int16_t CFG_W = display::WIDTH - 2 * CFG_X;
+constexpr int16_t FOOT_X = 8;     // left edge of the foot row
+constexpr int16_t FOOT_GAP = 8;   // between the version cell and the button
+constexpr int16_t FOOT_HALF = (display::WIDTH - 2 * FOOT_X - FOOT_GAP) / 2;
+constexpr int16_t VER_X = FOOT_X;
+constexpr int16_t CFG_X = FOOT_X + FOOT_HALF + FOOT_GAP;
+constexpr int16_t CFG_W = FOOT_HALF;
 
 void (*configCallback)() = nullptr;
 
@@ -241,7 +247,17 @@ void onConfigPressed(lv_event_t *) {
   if (configCallback != nullptr) configCallback();
 }
 
-// The one action on a screen full of readouts: a full-width button along the
+// The firmware version, in the left half of the foot row. Static -- set once at
+// build, never rewritten -- so it is drawn here and never touched by the update
+// pass. Muted and centered on the button's baseline so it reads as a label the
+// Config button sits beside, not a second control.
+void buildVersionLabel(lv_obj_t *parent) {
+  lv_obj_t *label = makeLabel(parent, &font_inter_12, theme::MUTED);
+  lv_label_set_text(label, "Firmware v" FIRMWARE_VERSION);
+  lv_obj_set_pos(label, PAD, CFG_Y + (CFG_H - 14) / 2);
+}
+
+// The one action on a screen full of readouts: a button in the right half of the
 // foot, styled like the brightness steppers so it reads as a control. Its own
 // event rather than a card gesture, because it does not sit over the cards.
 void buildConfigButton(lv_obj_t *parent) {
@@ -315,6 +331,7 @@ void buildSettingScreen(lv_obj_t *parent, void (*onConfig)()) {
   heapValue = makeStat(parent, "Heap", HEAP_LX, HEAP_VX);
   uptimeValue = makeStat(parent, "Up", UP_LX, UP_VX);
 
+  buildVersionLabel(parent);
   buildConfigButton(parent);
 
   lv_obj_update_layout(parent);
