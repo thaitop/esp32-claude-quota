@@ -196,21 +196,23 @@ without a browser, hold a press anywhere on the panel to exit unsaved.
 
 ## WiFi Setup
 
-Change the network the display joins — no reflash. Config Mode can't do this: its
-server needs the radio already up, so it can't edit the WiFi it runs on. Instead
-the device makes its own access point.
+Change the network the display joins — no reflash.
 
 It opens two ways:
 
 - **Automatically**, when it can't join the saved network at boot (network gone,
   wrong password, a board flashed with placeholder creds).
 - **On demand** — hold a finger on the screen while the device powers up (keep
-  holding ~1s after boot), to change networks even when the current one works.
+  holding ~1s after boot).
 
 The panel then shows an access point name (`ClaudeQuota-XXXX`), a **password**,
 and a URL. Join that WiFi from a phone, open `http://192.168.4.1/`, pick or type
 your network and password, then **Save & reboot** — the device joins the new
 network. Hold the screen to reboot without changing anything.
+
+<p align="center">
+  <img src="docs/images/wifi-setup.jpeg" alt="WiFi Setup access point screen on the device" width="360">
+</p>
 
 ## Colour thresholds
 
