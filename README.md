@@ -6,6 +6,8 @@
 
 <p align="center"><b>💸 Zero Claude tokens — watching your quota never spends it.</b></p>
 
+<p align="center"><sub>🍎 <b>Built and tested on macOS.</b> Windows is untested (paths, clipboard, and keep-alive all differ).</sub></p>
+
 <p align="center">
   <a href="https://s.shopee.co.th/9fJTGEoal1"><img alt="Buy the board on Shopee (TH)" src="docs/images/button-shop-en.webp" width="380" style="display:block;margin:0 auto"></a>
 </p>
@@ -49,6 +51,14 @@ app uses — no prompt, no model call, no hit to your rate-limit windows.
 
 Windows also needs the [CH340 driver](https://www.wch-ic.com/downloads/CH341SER_EXE.html)
 (built into macOS 12+/Linux). No soldering, no extra parts.
+
+> [!NOTE]
+> **This guide is written and tested on macOS.** The commands below assume macOS
+> conventions — `pbpaste`, `ipconfig getifaddr en0`, `launchd`, and the
+> `~/.local/bin/pio` path. Linux equivalents are noted inline where they differ.
+> **Windows is untested:** file paths, the clipboard command, and the
+> keep-alive mechanism (Task Scheduler, not `launchd`) all differ, so treat the
+> Windows steps as pointers rather than a copy-paste recipe.
 
 ## 1. Clone and configure
 
