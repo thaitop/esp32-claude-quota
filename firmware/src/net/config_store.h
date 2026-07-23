@@ -35,6 +35,12 @@ float configWeatherLon();
 const char *configWeatherTz();
 const char *configClockTz();
 
+// The saved WiFi credentials connectWifi() joins on at boot, from NVS or the
+// secrets.h defaults. The WiFi Setup portal is the only writer (configCommitWifi
+// below); the feeds never read these -- the radio is already up by then.
+const char *configWifiSsid();
+const char *configWifiPass();
+
 // A working copy Config Mode mutates as fields validate, seeded from the live
 // settings when the portal opens and committed to NVS by configCommit(). Held
 // here rather than in the portal so the accessors and the draft cannot drift
@@ -48,6 +54,12 @@ struct Settings {
   char coinTicker[(size_t)Coin::Count][8];
   char coinName[(size_t)Coin::Count][20];
   char stockSym[(size_t)Ticker::Count][12];
+  // The network the radio joins at boot. WIFI_SSID/WIFI_PASSWORD in secrets.h
+  // are only the factory defaults now -- the WiFi Setup portal (AP fallback)
+  // overwrites these in NVS when a device cannot reach its saved network. 32/63
+  // are the SSID/PSK maxima WPA2 allows, plus the terminator.
+  char wifiSsid[33];
+  char wifiPass[64];
 };
 
 // A copy of the live settings, for Config Mode to edit without touching what
@@ -84,5 +96,11 @@ const StockCatalogEntry *stockCatalogFind(const char *symbol);
 // Persists `draft` to NVS. The new values are not applied to the running feeds
 // -- Config Mode reboots after this, and boot reloads them cleanly.
 void configCommit(const Settings &draft);
+
+// Persists just the WiFi credentials, leaving every other setting as NVS holds
+// it. The WiFi Setup portal runs in AP mode with the feeds down and no access
+// to the rest of the draft's validation, so it writes only these two fields;
+// like configCommit(), it takes effect on the reboot the portal ends with.
+void configCommitWifi(const char *ssid, const char *pass);
 
 }  // namespace net

@@ -74,7 +74,10 @@ Edit `firmware/src/secrets.h`:
 Get the machine's IP with `ipconfig getifaddr en0` (macOS) or `hostname -I`
 (Linux). The Finnhub token is optional — leaving the placeholder just shows `--`
 on the Stock screen. Weather, coins and stocks can also be changed on the device
-later via [Config Mode](#config-mode), no reflash.
+later via [Config Mode](#config-mode), and the **WiFi** via
+[WiFi Setup](#wifi-setup) — both without a reflash. The values here are the
+factory defaults the first boot uses; once changed on the device they live in
+NVS and editing this file changes nothing until a fresh flash.
 
 ## 2. Flash
 
@@ -191,6 +194,24 @@ without a browser, hold a press anywhere on the panel to exit unsaved.
   <img src="docs/images/screen-settings.jpeg" alt="Config Mode page in a browser" width="360">
 </p>
 
+## WiFi Setup
+
+Change the network the display joins — no reflash. Config Mode can't do this: its
+server needs the radio already up, so it can't edit the WiFi it runs on. Instead
+the device makes its own access point.
+
+It opens two ways:
+
+- **Automatically**, when it can't join the saved network at boot (network gone,
+  wrong password, a board flashed with placeholder creds).
+- **On demand** — hold a finger on the screen while the device powers up (keep
+  holding ~1s after boot), to change networks even when the current one works.
+
+The panel then shows an access point name (`ClaudeQuota-XXXX`), a **password**,
+and a URL. Join that WiFi from a phone, open `http://192.168.4.1/`, pick or type
+your network and password, then **Save & reboot** — the device joins the new
+network. Hold the screen to reboot without changing anything.
+
 ## Colour thresholds
 
 | Utilization | Colour |
@@ -208,7 +229,12 @@ without a browser, hold a press anywhere on the panel to exit unsaved.
   GPIO27; change `-DTFT_BL=21`.
 - **Colours inverted.** Swap `-DILI9341_2_DRIVER=1` for `-DILI9341_DRIVER=1`.
 - **Touches off-centre.** Replace the four `TOUCH_RAW_*` constants in `config.h`.
-- **WiFi never joins.** 2.4GHz only; captive-portal networks won't work.
+- **WiFi never joins.** 2.4GHz only; captive-portal networks won't work. A
+  device that can't join drops into [WiFi Setup](#wifi-setup) (its own access
+  point) so you can point it at another network without a reflash.
+- **Serial monitor prints garbage.** Baud mismatch — run `pio device monitor`
+  from the `firmware/` directory so it reads `monitor_speed = 115200`, or pass
+  `-b 115200`.
 - **Any figure shows `--`.** The value is not trustworthy, not zero. The Setting
   screen names the failing feed.
 - **Only Claude screens `--`, bridge fine.** Nearly always an expired session
@@ -221,5 +247,8 @@ The `sessionKey` cookie is a **full account credential**, not a scoped API key.
 It lives in `~/.config/claude-quota/session-key` (mode 600, outside the repo) and
 is never logged or put in a plist. The bridge serves on the LAN with no auth
 (percentages only, no credentials) — bind it to a trusted network, don't
-port-forward. The ESP32 stores WiFi credentials in plaintext, so treat a board
-you give away as one you gave your WiFi password to.
+port-forward. The ESP32 stores WiFi credentials in plaintext (in NVS once
+[WiFi Setup](#wifi-setup) has written them), so treat a board you give away as
+one you gave your WiFi password to — erase its flash first. WiFi Setup's own
+access point is WPA2-protected with an 8-digit password shown only on the panel,
+so the home password typed into its form never crosses an open link.

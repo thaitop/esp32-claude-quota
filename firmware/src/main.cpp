@@ -23,6 +23,7 @@
 #include "net/stock.h"
 #include "net/timesync.h"
 #include "net/weather.h"
+#include "net/wifi_portal.h"
 #include "secrets.h"
 #include "ui/nav.h"
 #include "ui/screen_claude.h"
@@ -119,10 +120,84 @@ void enterConfigMode() {
   showConfigOverlay(model.ipAddress, net::configPortalPin());
 }
 
-void connectWifi() {
+// The panel side of WiFi Setup, the AP-mode sibling of showConfigOverlay. Shows
+// the AP name and password a phone joins and the URL to open once on it. Built
+// on entry and never torn down -- WiFi Setup ends in a reboot, same as Config
+// Mode.
+void showWifiSetupOverlay(const char *ssid, const char *pass, const char *url) {
+  lv_obj_t *ov = lv_obj_create(lv_layer_top());
+  lv_obj_remove_style_all(ov);
+  lv_obj_set_size(ov, display::WIDTH, display::HEIGHT);
+  lv_obj_set_pos(ov, 0, 0);
+  lv_obj_add_style(ov, theme::bgStyle(theme::BG), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ov, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_remove_flag(ov, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(ov, LV_OBJ_FLAG_CLICKABLE);
+
+  lv_obj_t *heading = ui::makeLabel(ov, &font_inter_22_bold, theme::TEXT);
+  lv_label_set_text(heading, "WiFi Setup");
+  lv_obj_align(heading, LV_ALIGN_TOP_MID, 0, 20);
+
+  lv_obj_t *hint = ui::makeLabel(ov, &font_inter_12, theme::MUTED);
+  lv_label_set_text(hint, "Join this WiFi from your phone:");
+  lv_obj_align(hint, LV_ALIGN_TOP_MID, 0, 58);
+
+  lv_obj_t *net = ui::makeLabel(ov, &font_inter_22_bold, theme::ACCENT);
+  lv_label_set_text(net, ssid);
+  lv_obj_align(net, LV_ALIGN_TOP_MID, 0, 78);
+
+  char passText[24];
+  snprintf(passText, sizeof(passText), "PASS  %s", pass);
+  lv_obj_t *passLabel = ui::makeLabel(ov, &font_inter_22_bold, theme::TEXT);
+  lv_label_set_text(passLabel, passText);
+  lv_obj_align(passLabel, LV_ALIGN_TOP_MID, 0, 118);
+
+  lv_obj_t *urlHint = ui::makeLabel(ov, &font_inter_12, theme::MUTED);
+  lv_label_set_text(urlHint, "then open:");
+  lv_obj_align(urlHint, LV_ALIGN_TOP_MID, 0, 158);
+
+  lv_obj_t *urlLabel = ui::makeLabel(ov, &font_inter_22_bold, theme::ACCENT);
+  lv_label_set_text(urlLabel, url);
+  lv_obj_align(urlLabel, LV_ALIGN_TOP_MID, 0, 176);
+
+  lv_obj_t *foot = ui::makeLabel(ov, &font_inter_12, theme::MUTED);
+  lv_label_set_text(foot, "Hold screen to reboot without changing WiFi.");
+  lv_obj_align(foot, LV_ALIGN_BOTTOM_MID, 0, -20);
+}
+
+// Stands up the AP-mode WiFi provisioning server and shows its overlay. Reached
+// when connectWifi() fails at boot, or when the screen is held during boot to
+// force a change even though the saved network still works.
+void enterWifiSetup() {
+  net::wifiPortalBegin();
+  showWifiSetupOverlay(net::wifiPortalApSsid(), net::wifiPortalApPassword(),
+                       net::wifiPortalUrl());
+}
+
+// Whether the screen is being held as the device boots, the on-device way to
+// force WiFi Setup when the saved network still connects (moving house, say).
+// Samples touch across a short window, requiring a continuous press so a single
+// settling glitch does not trip it. display::tick() drives LVGL's input read.
+bool screenHeldAtBoot() {
+  const uint32_t deadline = millis() + 700;
+  while (millis() < deadline) {
+    display::tick();
+    lv_indev_t *indev = lv_indev_get_next(nullptr);
+    if (indev == nullptr || lv_indev_get_state(indev) != LV_INDEV_STATE_PRESSED)
+      return false;
+    delay(20);
+  }
+  return true;
+}
+
+// Joins the network NVS holds (or the secrets.h defaults, on a fresh device).
+// Returns whether it associated inside the timeout; the caller drops into WiFi
+// Setup (AP mode) when it did not, so a device whose saved network is gone can
+// be pointed at a new one without a reflash.
+bool connectWifi() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.begin(net::configWifiSsid(), net::configWifiPass());
 
   const uint32_t deadline = millis() + WIFI_CONNECT_TIMEOUT_MS;
   while (WiFi.status() != WL_CONNECTED && millis() < deadline) {
@@ -133,8 +208,9 @@ void connectWifi() {
   if (model.wifiAssociated) {
     Serial.printf("wifi ok, ip=%s, bridge=%s\n", model.ipAddress, model.bridgeUrl);
   } else {
-    Serial.println("wifi failed, will keep retrying");
+    Serial.println("wifi failed");
   }
+  return model.wifiAssociated;
 }
 
 // The band the card gestures own: below the title, above the navbar. Anything
@@ -210,9 +286,10 @@ void setup() {
   lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 
-  // Compiled-in and unchanging, so the model carries them from here rather
-  // than having the Setting screen reach into secrets.h to read them.
-  model.ssid = WIFI_SSID;
+  // The SSID now comes from NVS (WiFi Setup can change it), the bridge URL is
+  // still compiled in. Both are pointers into storage that outlives setup(), so
+  // the model can carry them rather than the Setting screen reaching for them.
+  model.ssid = net::configWifiSsid();
   model.bridgeUrl = BRIDGE_BASE_URL;
 
   ui::buildShell(screen);
@@ -233,7 +310,24 @@ void setup() {
   ui::warnIfOverflowing("stock", ui::page(ui::Screen::Stock));
   ui::warnIfOverflowing("setting", ui::page(ui::Screen::Setting));
 
-  connectWifi();
+  // Two doors into WiFi Setup, both before the feeds are even registered. The
+  // screen held as the device boots forces it even when the saved network works
+  // (moving the display to a new place); otherwise a failed association falls
+  // into it, so a network that is gone or a wrong password is fixable without a
+  // reflash. Either way the loop below runs the AP portal instead of the feeds
+  // until the browser saves and the device reboots -- there is nothing to fetch
+  // with no uplink, so setup() returns here rather than syncing the clock or
+  // registering feeds that could not run.
+  if (screenHeldAtBoot()) {
+    Serial.println("screen held at boot: entering WiFi Setup");
+    enterWifiSetup();
+    return;
+  }
+  if (!connectWifi()) {
+    Serial.println("no wifi association: entering WiFi Setup");
+    enterWifiSetup();
+    return;
+  }
 
   // Before the feeds, and blocking, because it is one packet and the header is
   // already on screen with a hole where the time goes.
@@ -271,6 +365,34 @@ void loop() {
   static ui::Screen lastScreen = ui::Screen::Count;
 
   display::tick();
+
+  // WiFi Setup owns the loop the same way Config Mode does, but simpler: there
+  // are no feeds to stop (there is no uplink to fetch over) and no validation
+  // TLS to keep clear of, so it only pumps the AP web server. It ends on a
+  // reboot -- the browser saving new credentials, or a held press for the
+  // present-user who opened it by mistake or changed their mind. The reboot
+  // reloads the committed WiFi and tries to join it.
+  if (net::wifiPortalActive()) {
+    net::wifiPortalService();
+
+    static bool apWasDown = false;
+    static uint32_t apPressStart = 0;
+    lv_indev_t *indev = lv_indev_get_next(nullptr);
+    const bool down =
+        indev != nullptr && lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED;
+    if (down && !apWasDown) apPressStart = millis();
+    const bool heldToExit = down && millis() - apPressStart > LONG_PRESS_MS;
+    apWasDown = down;
+
+    if (heldToExit || net::wifiPortalShouldReboot()) {
+      Serial.println(heldToExit ? "wifi setup cancelled on device, rebooting"
+                                : "wifi saved, rebooting");
+      delay(200);  // let the final HTTP response flush before the reset
+      ESP.restart();
+    }
+    delay(5);
+    return;
+  }
 
   // Config Mode owns the loop while it is up: the feeds are stopped so no TLS
   // fetch can overlap the web server's validation fetches (ADR-0003/0005), and

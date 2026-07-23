@@ -28,7 +28,7 @@ constexpr char NVS_KEY_BLOB[] = "settings";
 // build is ignored rather than reinterpreted field-for-field into garbage. The
 // device then comes up on defaults, which is the safe direction: a stale coin
 // id shows Unknown, it does not point a request somewhere unexpected.
-constexpr uint32_t SETTINGS_VERSION = 1;
+constexpr uint32_t SETTINGS_VERSION = 2;  // v2 added wifiSsid/wifiPass
 
 struct StoredSettings {
   uint32_t version;
@@ -86,6 +86,8 @@ void loadDefaults(Settings &out) {
   for (size_t i = 0; i < (size_t)Ticker::Count; i++) {
     copyField(out.stockSym[i], sizeof(out.stockSym[i]), DEFAULT_STOCK_SYM[i]);
   }
+  copyField(out.wifiSsid, sizeof(out.wifiSsid), WIFI_SSID);
+  copyField(out.wifiPass, sizeof(out.wifiPass), WIFI_PASSWORD);
 }
 
 }  // namespace
@@ -115,6 +117,8 @@ float configWeatherLat() { return live.weatherLat; }
 float configWeatherLon() { return live.weatherLon; }
 const char *configWeatherTz() { return live.weatherTz; }
 const char *configClockTz() { return live.clockTz; }
+const char *configWifiSsid() { return live.wifiSsid; }
+const char *configWifiPass() { return live.wifiPass; }
 
 Settings configDraft() { return live; }
 
@@ -150,6 +154,17 @@ void configCommit(const Settings &draft) {
   prefs.putBytes(NVS_KEY_BLOB, &stored, sizeof(stored));
   prefs.end();
   Serial.println("config: committed to NVS");
+}
+
+void configCommitWifi(const char *ssid, const char *pass) {
+  // Start from the live copy so every other setting survives, overwrite only
+  // the two WiFi fields, and write the whole blob back -- one namespace, one
+  // key, so a partial write is not a thing NVS lets us do anyway.
+  Settings draft = live;
+  copyField(draft.wifiSsid, sizeof(draft.wifiSsid), ssid);
+  copyField(draft.wifiPass, sizeof(draft.wifiPass), pass);
+  configCommit(draft);
+  Serial.println("config: wifi credentials committed to NVS");
 }
 
 }  // namespace net
