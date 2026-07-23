@@ -70,9 +70,14 @@
 // a catalog), so the feed builds this with snprintf from config_store's ids
 // rather than the path being a literal. `%s` once per coin, comma-joined --
 // keep the count in step with Coin::Count if a coin slot is ever added.
+// simple/price cannot report a 7-day move, so the screen reads /coins/markets,
+// which carries the 24h change and the 7d change side by side. The response is
+// an array sorted by market cap rather than a map keyed by id, so the feed
+// matches each element back to a coin by its "id" (see net/crypto.cpp) instead
+// of indexing by the id it asked for.
 #define CRYPTO_PATH_FMT                                                   \
-  "/api/v3/simple/price?ids=%s,%s,%s&vs_currencies=usd"                   \
-  "&include_24hr_change=true&include_24hr_vol=true"
+  "/api/v3/coins/markets?vs_currency=usd&ids=%s,%s,%s"                    \
+  "&price_change_percentage=7d"
 
 // Finnhub /quote. Free tier: 60 requests/minute, one symbol per request, and
 // no historical candles -- which is why the Stock screen shows a price and a

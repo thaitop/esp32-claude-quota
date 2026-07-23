@@ -87,7 +87,7 @@ lv_obj_t *glyph = nullptr;
 lv_obj_t *priceLabel = nullptr;
 lv_obj_t *pairLabel = nullptr;
 lv_obj_t *footnote = nullptr;
-Tile tiles[3];  // 24h %, 24h change in dollars, 24h volume
+Tile tiles[3];  // 24h %, 24h change in dollars, 7d %
 
 Coin selected = Coin::BTC;
 
@@ -123,10 +123,9 @@ const lv_image_dsc_t *badgeFor(Coin coin) { return coinLogo(coinId(coin)); }
 
 const lv_image_dsc_t *titleBadgeFor(Coin coin) { return coinLogoHdr(coinId(coin)); }
 
-// Compared at the resolution the screen draws -- cents, hundredths of a
-// percent, and whole thousands of dollars of volume. Comparing the raw floats
-// would repaint on noise nobody can see, and a day's volume is a figure that
-// moves in the low digits continuously.
+// Compared at the resolution the screen draws -- cents and hundredths of a
+// percent. Comparing the raw floats would repaint on noise nobody can see,
+// since both percentages drift in digits below what a tile prints.
 bool sameAsShown(const CoinQuote &quote, Coin coin) {
   if (!everShown || coin != shownCoin) return false;
   if (quote.trusted != shown.trusted) return false;
@@ -134,8 +133,8 @@ bool sameAsShown(const CoinQuote &quote, Coin coin) {
   return (int32_t)(quote.priceUsd * 100) == (int32_t)(shown.priceUsd * 100) &&
          (int32_t)(quote.change24hPct * 100) ==
              (int32_t)(shown.change24hPct * 100) &&
-         (int32_t)(quote.volume24hUsd / 1000.0f) ==
-             (int32_t)(shown.volume24hUsd / 1000.0f);
+         (int32_t)(quote.change7dPct * 100) ==
+             (int32_t)(shown.change7dPct * 100);
 }
 
 void setFootnote(const char *text, uint32_t colour) {
@@ -276,12 +275,13 @@ void buildCryptoScreen(lv_obj_t *parent) {
   lv_image_set_src(glyph, badgeFor(selected));
   lv_obj_set_pos(glyph, GLYPH_X, GLYPH_Y);
 
-  // The three figures a day of trading is read by. The percentage says how far
-  // it moved, the dollars say what that was worth, and the volume says how much
-  // conviction was behind it -- one without the others is half a sentence.
+  // Three figures across two horizons. The 24h percent says how far it moved
+  // today, the dollars say what that was worth, and the 7d percent says whether
+  // today ran with the week or against it -- one without the others is half a
+  // sentence.
   buildTile(tiles[0], parent, 0, "24h %");
   buildTile(tiles[1], parent, 1, "24h change");
-  buildTile(tiles[2], parent, 2, "24h volume");
+  buildTile(tiles[2], parent, 2, "7d %");
 
   footnote = makeLabel(parent, &font_inter_12, theme::MUTED);
   lv_label_set_text(footnote, "");
@@ -359,10 +359,12 @@ void updateCryptoScreen(const AppModel &model) {
                       quote.priceUsd, true, text, sizeof(text));
   setTile(tiles[1], text, tint);
 
-  // Volume has no direction, so it stays in the text colour. Tinting it to
-  // match its neighbours would claim the day's trading was itself up or down.
-  format::compactUsd(quote.volume24hUsd, true, text, sizeof(text));
-  setTile(tiles[2], text, theme::TEXT);
+  // The 7d move carries its own direction, independent of the day's, so it is
+  // tinted from its own sign -- a red week under a green day is exactly the
+  // contrast this tile exists to show.
+  const uint32_t tint7d = quote.change7dPct >= 0.0f ? theme::GREEN : theme::RED;
+  format::signedPercent(quote.change7dPct, true, text, sizeof(text));
+  setTile(tiles[2], text, tint7d);
 }
 
 }  // namespace ui

@@ -142,7 +142,7 @@ struct CoinQuote {
   bool trusted = false;
   float priceUsd = 0.0f;
   float change24hPct = 0.0f;
-  float volume24hUsd = 0.0f;
+  float change7dPct = 0.0f;
 };
 
 // The id CoinGecko knows a coin by, the ticker the toggle prints, and the name

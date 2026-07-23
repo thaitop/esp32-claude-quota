@@ -114,8 +114,8 @@ inline void signedPercent(float pct, bool trusted, char *out, size_t len) {
 
 // What the last 24 hours moved the price by, in dollars.
 //
-// Derived rather than fetched, because CoinGecko's simple/price reports the
-// move only as a percentage. This is exact algebra over the two figures the
+// Derived rather than fetched, because CoinGecko reports the move only as a
+// percentage. This is exact algebra over the two figures the
 // server did send -- if p is the price now and c the percent change, the price
 // a day ago was p / (1 + c/100) -- and not an estimate standing in for a
 // missing field, which is the distinction ADR-0001 draws.
