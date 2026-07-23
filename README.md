@@ -5,8 +5,7 @@
 </p>
 
 <p align="center"><b>💸 Zero Claude tokens — watching your quota never spends it.</b></p>
-
-<p align="center"><sub>🍎 <b>Built and tested on macOS.</b> Windows is untested (paths, clipboard, and keep-alive all differ).</sub></p>
+<p align="center">🍎 <b>Built and tested on macOS.</b> Windows is untested (paths, clipboard, and keep-alive all differ).</p>
 
 <p align="center">
   <a href="https://s.shopee.co.th/9fJTGEoal1"><img alt="Buy the board on Shopee (TH)" src="docs/images/button-shop-en.webp" width="380" style="display:block;margin:0 auto"></a>

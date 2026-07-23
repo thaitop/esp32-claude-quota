@@ -5,8 +5,7 @@
 </p>
 
 <p align="center"><b>💸 ไม่กิน Claude token เลย — ติดตามดูโควตาแบบไม่เปลืองโควตา</b></p>
-
-<p align="center"><sub>🍎 <b>สร้างและทดสอบบน macOS</b> ส่วน Windows ยังไม่ทดสอบ (path, คลิปบอร์ด และกลไกรันค้างต่างกันหมด)</sub></p>
+<p align="center">🍎 <b>สร้างและทดสอบบน macOS</b> ส่วน Windows ยังไม่ทดสอบ (path, คลิปบอร์ด และกลไกรันค้างต่างกันหมด)</p>
 
 <p align="center">
   <a href="https://s.shopee.co.th/9fJTGEoal1"><img alt="ซื้อบอร์ดบน Shopee" src="docs/images/button-shop.webp" width="380" style="display:block;margin:0 auto"></a>
